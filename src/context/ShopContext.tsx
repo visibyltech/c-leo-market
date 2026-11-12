@@ -94,9 +94,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cart, setCart] = useState<CartItem[]>(getStoredCart);
   const [wishlist, setWishlist] = useState<string[]>(getStoredWishlist);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [bnplApplications, setBnplApplications] = useState<BNPLApplication[]>(getStoredBNPL);
-  const [customer, setCustomer] = useState<CustomerDetails>(getStoredCustomer);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(getStoredNotifications);
+  const [bnplApplications, setBnplApplications] = useState<BNPLApplication[]>([]);
+  const [customer, setCustomer] = useState<CustomerDetails>({ fullName: '', email: '', phone: '', address: '', city: '', state: '' });
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   const [activeBNPLProduct, setActiveBNPLProduct] = useState<Product | null>(null);
   const [activePSSProduct, setActivePSSProduct] = useState<Product | null>(null);
