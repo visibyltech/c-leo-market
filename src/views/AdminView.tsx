@@ -17,13 +17,14 @@ import {
   DollarSign,
   ArrowUpRight,
   Filter,
+  Download,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 import { useNavigation } from '../context/NavigationContext';
 import { formatNaira } from '../services/store';
 import { CATEGORIES } from '../data/categories';
 import { CategorySlug, Order, Product } from '../types';
-import { uploadToCloudinary } from '../services/cloudinary';
+import { uploadToCloudinary, uploadRemoteImageToCloudinary } from '../services/cloudinary';
 
 export const AdminView: React.FC = () => {
   const { navigateTo } = useNavigation();
@@ -61,7 +62,100 @@ export const AdminView: React.FC = () => {
   const [formImageFile, setFormImageFile] = useState<File | null>(null);
   const [savingProduct, setSavingProduct] = useState(false);
   const [productFormError, setProductFormError] = useState('');
+  const [importingCatalogue, setImportingCatalogue] = useState(false);
+  const [importProgress, setImportProgress] = useState('');
+  const [importSummary, setImportSummary] = useState('');
   const [formDescription, setFormDescription] = useState('High-performance electronics with factory warranty.');
+
+  const handleImportCatalogue = async () => {
+    if (!isAdmin || importingCatalogue) return;
+    setImportingCatalogue(true);
+    setImportSummary('');
+    setImportProgress('Reading the existing C-LEO catalogue…');
+    let imported = 0;
+    let skipped = 0;
+    let failed = 0;
+    try {
+      const response = await fetch('/api/catalogue');
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Could not read the existing catalogue.');
+      const sourceProducts = Array.isArray(payload.products) ? payload.products : [];
+      if (!sourceProducts.length) throw new Error('The old catalogue returned no products.');
+      const existingLinks = new Set(products.map((p) => p.cleoShopUrl).filter(Boolean));
+      for (let index = 0; index < sourceProducts.length; index += 1) {
+        const source = sourceProducts[index];
+        const permalink = String(source.permalink || '');
+        const name = String(source.name || '').trim();
+        const imageSource = String(source.images?.[0]?.src || '');
+        if (!name || !permalink || !imageSource || existingLinks.has(permalink)) {
+          skipped += 1;
+          continue;
+        }
+        try {
+          setImportProgress(`Importing ${index + 1} of ${sourceProducts.length}: ${name}`);
+          const image = await uploadRemoteImageToCloudinary(imageSource);
+          const minorUnit = Number(source.prices?.currency_minor_unit ?? 2);
+          const divisor = Math.pow(10, minorUnit);
+          const price = Number(source.prices?.price || 0) / divisor;
+          const regularPrice = Number(source.prices?.regular_price || source.prices?.price || 0) / divisor;
+          if (!price || !Number.isFinite(price)) { failed += 1; continue; }
+          const categoryName = String(source.categories?.[0]?.name || 'Other Products');
+          const categoryText = categoryName.toLowerCase();
+          const category: CategorySlug =
+            /phone|mobile|smartphone/.test(categoryText) ? 'smartphones' :
+            /laptop|computer/.test(categoryText) ? 'laptops-computers' :
+            /tv|television/.test(categoryText) ? 'televisions' :
+            /kitchen|cook|blender|iron/.test(categoryText) ? 'kitchen-appliances' :
+            /solar|power|energy|inverter/.test(categoryText) ? 'power-solar' :
+            /audio|speaker|sound|headphone/.test(categoryText) ? 'audio-speakers' :
+            /furniture|chair|table/.test(categoryText) ? 'furniture' :
+            /camera|security/.test(categoryText) ? 'cameras-security' :
+            /watch|accessor/.test(categoryText) ? 'watches-accessories' :
+            /home|appliance|freezer|fridge|washing|air condition/.test(categoryText) ? 'home-appliances' :
+            /grocery|rice|combo/.test(categoryText) ? 'other-products' : 'electronics-gadgets';
+          const description = String(source.short_description || source.description || '')
+            .replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+          const dailyMatch = description.match(/₦\s*([\d,]+)\s*(?:per\s*)?day/i);
+          const dailyRate = dailyMatch ? Number(dailyMatch[1].replace(/,/g, '')) : 0;
+          const monthsMatch = description.match(/(\d+)\s*months?/i);
+          await addProduct({
+            name,
+            brand: name.split(/\s+/)[0] || 'C-LEO',
+            category,
+            categoryName,
+            price,
+            originalPrice: regularPrice > price ? regularPrice : price,
+            discountPercent: regularPrice > price ? Math.round(((regularPrice - price) / regularPrice) * 100) : 0,
+            rating: 5,
+            reviewCount: 0,
+            image: image.url,
+            additionalImages: (source.images || []).slice(1, 4).map((item: any) => String(item.src || '')).filter(Boolean),
+            inStock: source.is_in_stock !== false,
+            stockCount: source.is_in_stock === false ? 0 : 10,
+            isFeatured: false,
+            paySmallSmallDaily: dailyRate,
+            paySmallSmallDurationDays: monthsMatch ? Number(monthsMatch[1]) * 30 : undefined,
+            cleoShopUrl: permalink,
+            description,
+            specifications: {},
+            warranty: 'As stated by C-LEO Market',
+            deliveryEstimate: 'As stated by C-LEO Market',
+          });
+          existingLinks.add(permalink);
+          imported += 1;
+        } catch (itemError) {
+          console.error('Catalogue item import failed:', name, itemError);
+          failed += 1;
+        }
+      }
+      setImportSummary(`Import finished: ${imported} added, ${skipped} already present or incomplete, ${failed} failed. Images copied to Cloudinary; product records saved to Firebase.`);
+    } catch (error) {
+      setImportSummary(error instanceof Error ? error.message : 'Catalogue import failed.');
+    } finally {
+      setImportingCatalogue(false);
+      setImportProgress('');
+    }
+  };
 
   // Analytics Computations
   const totalSales = orders
@@ -366,11 +460,16 @@ export const AdminView: React.FC = () => {
       {/* Tab 2: Product Catalog Management */}
       {activeTab === 'products' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-slate-900">
-              Active Inventory & Pay Small Small Rates
-            </h3>
-            <button
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-extrabold text-slate-900">
+                Active Inventory & Pay Small Small Rates
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={handleImportCatalogue} disabled={importingCatalogue} className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 disabled:opacity-60">
+                  <Download className="h-4 w-4" /> {importingCatalogue ? 'Importing catalogue…' : 'Import Existing Catalogue'}
+                </button>
+                <button
               onClick={() => {
                 resetForm();
                 setEditingProductId(null);
@@ -379,8 +478,12 @@ export const AdminView: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0B4FD8] hover:bg-[#002B7F] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Add New Product</span>
-            </button>
+                <span>Add New Product</span>
+                </button>
+              </div>
+            </div>
+            {(importProgress || importSummary) && <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">{importProgress || importSummary}</div>}
+            {importSummary && <p className="text-xs text-slate-600">{importSummary}</p>}
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
