@@ -125,7 +125,16 @@ export const getStoredProducts = (): Product[] => {
       return INITIAL_PRODUCTS;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_PRODUCTS;
+    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_PRODUCTS;
+
+    // Refresh legacy local image paths saved before Vite asset imports were corrected.
+    const currentImages = new Map(INITIAL_PRODUCTS.map((product) => [product.id, product.image]));
+    return parsed.map((product: Product) => ({
+      ...product,
+      image: typeof product.image === 'string' && product.image.startsWith('/src/assets/images/')
+        ? (currentImages.get(product.id) || product.image.replace('/src/assets/images/', '/assets/images/'))
+        : product.image,
+    }));
   } catch {
     return INITIAL_PRODUCTS;
   }
