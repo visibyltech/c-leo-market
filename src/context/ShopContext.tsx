@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth';
+import { doc, getDoc, setDoc, collection, query, where, onSnapshot, updateDoc } from 'firebase/firestore';
+import { firebaseAuth, firestoreDb } from '../lib/firebase';
 import {
   BNPLApplication,
   CartItem,
@@ -30,7 +33,7 @@ interface Toast {
   type: 'success' | 'info' | 'error';
 }
 
-interface ShopContextType {
+interface ShopContextType {\n  currentUser: User | null;\n  authLoading: boolean;\n  signUp: (email: string, password: string, fullName: string) => Promise<void>;\n  signIn: (email: string, password: string) => Promise<void>;\n  signOutUser: () => Promise<void>;
   products: Product[];
   addProduct: (product: Omit<Product, 'id'>) => Product;
   updateProduct: (id: string, updates: Partial<Product>) => void;
@@ -82,7 +85,7 @@ interface ShopContextType {
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(getStoredProducts);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);\n  const [authLoading, setAuthLoading] = useState(true);\n  const [products, setProducts] = useState<Product[]>(getStoredProducts);
   const [cart, setCart] = useState<CartItem[]>(getStoredCart);
   const [wishlist, setWishlist] = useState<string[]>(getStoredWishlist);
   const [orders, setOrders] = useState<Order[]>(getStoredOrders);
@@ -94,6 +97,42 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activePSSProduct, setActivePSSProduct] = useState<Product | null>(null);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  useEffect(() => onAuthStateChanged(firebaseAuth, async (user) => {
+    setCurrentUser(user);
+    setAuthLoading(false);
+    if (user) {
+      try {
+        const profile = await getDoc(doc(firestoreDb, 'customers', user.uid));
+        if (profile.exists()) setCustomer((prev) => ({ ...prev, ...profile.data() } as CustomerDetails));
+      } catch (error) { console.error('Could not load customer profile', error); }
+    } else {
+      setOrders([]);
+    }
+  }), []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const ordersQuery = query(collection(firestoreDb, 'orders'), where('userId', '==', currentUser.uid));
+    return onSnapshot(ordersQuery, (snapshot) => {
+      const cloudOrders = snapshot.docs.map((item) => item.data() as Order);
+      setOrders(cloudOrders.sort((a, b) => b.date.localeCompare(a.date)));
+    }, (error) => console.error('Could not sync customer orders', error));
+  }, [currentUser]);
+
+  const signUp = async (email: string, password: string, fullName: string) => {
+    const credential = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
+    await updateProfile(credential.user, { displayName: fullName.trim() });
+    const profile = { fullName: fullName.trim(), email: email.trim(), phone: '', address: '', city: '', state: '' };
+    await setDoc(doc(firestoreDb, 'customers', credential.user.uid), { ...profile, uid: credential.user.uid, createdAt: new Date().toISOString() });
+    setCustomer(profile);
+  };
+
+  const signIn = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+  };
+
+  const signOutUser = async () => { await signOut(firebaseAuth); };
 
   // Sync state to localStorage
   useEffect(() => saveStoredProducts(products), [products]);
@@ -198,7 +237,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       trackingNumber,
     };
 
-    setOrders((prev) => [newOrder, ...prev]);
+    setOrders((prev) => [newOrder, ...prev]);\n    if (currentUser) setDoc(doc(firestoreDb, 'orders', newOrder.id), { ...newOrder, userId: currentUser.uid }).catch((error) => { console.error('Order save failed', error); showToast('Order could not sync to your account. Please contact support.', 'error'); });
 
     // Add customer notification
     const newNotif: NotificationItem = {
@@ -266,7 +305,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateCustomer = (details: Partial<CustomerDetails>) => {
-    setCustomer((prev) => ({ ...prev, ...details }));
+    setCustomer((prev) => {\n      const updated = { ...prev, ...details };\n      if (currentUser) setDoc(doc(firestoreDb, 'customers', currentUser.uid), { ...updated, uid: currentUser.uid, updatedAt: new Date().toISOString() }, { merge: true }).catch((error) => console.error('Profile save failed', error));\n      return updated;\n    });
   };
 
   const markNotificationRead = (id: string) => {
