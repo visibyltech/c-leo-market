@@ -93,7 +93,12 @@ export const AdminView: React.FC = () => {
         }
         try {
           setImportProgress(`Importing ${index + 1} of ${sourceProducts.length}: ${name}`);
-          const image = await uploadRemoteImageToCloudinary(imageSource);
+          const sourceImages = (source.images || []).slice(0, 4).map((item: any) => String(item.src || '')).filter(Boolean);
+          const uploadedImages: string[] = [];
+          for (const sourceImage of sourceImages) {
+            const uploaded = await uploadRemoteImageToCloudinary(sourceImage);
+            uploadedImages.push(uploaded.url);
+          }
           const minorUnit = Number(source.prices?.currency_minor_unit ?? 2);
           const divisor = Math.pow(10, minorUnit);
           const price = Number(source.prices?.price || 0) / divisor;
@@ -128,8 +133,8 @@ export const AdminView: React.FC = () => {
             discountPercent: regularPrice > price ? Math.round(((regularPrice - price) / regularPrice) * 100) : 0,
             rating: 5,
             reviewCount: 0,
-            image: image.url,
-            additionalImages: (source.images || []).slice(1, 4).map((item: any) => String(item.src || '')).filter(Boolean),
+            image: uploadedImages[0],
+            additionalImages: uploadedImages.slice(1),
             inStock: source.is_in_stock !== false,
             stockCount: source.is_in_stock === false ? 0 : 10,
             isFeatured: false,
