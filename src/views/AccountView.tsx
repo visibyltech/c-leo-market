@@ -30,7 +30,7 @@ export const AccountView: React.FC = () => {
     notifications,
     markNotificationRead,
     showToast,
-    currentUser, signOutUser,
+    currentUser, authLoading, signOutUser,
   } = useShop();
 
   const [activeTab, setActiveTab] = useState<'orders' | 'bnpl' | 'saved' | 'profile' | 'notifications'>(
@@ -53,6 +53,7 @@ export const AccountView: React.FC = () => {
     showToast('Profile information updated');
   };
 
+  if (authLoading) return <div className="py-16 text-center text-sm text-slate-500">Loading your account…</div>;
   if (!currentUser) return <div className="max-w-7xl mx-auto px-3 sm:px-6 py-10 pb-24 md:pb-12"><AuthPanel /></div>;
 
   return (
