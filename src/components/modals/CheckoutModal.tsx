@@ -59,12 +59,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setPaymentStep('transfer');
   };
 
-  const handleSubmitOrder = () => {
+  const handleSubmitOrder = async () => {
     if (!receiptFileName) {
       setFormError('Please select your transfer receipt before submitting.');
       return;
     }
-    const newOrder = createOrder({
+    try {
+    const newOrder = await createOrder({
       customer: { fullName, email, phone, address, city, state, notes },
       items,
       subtotal,
@@ -80,6 +81,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setCompletedOrder(newOrder);
     setPaymentStep('success');
     showToast('Order submitted. Payment is awaiting admin verification.', 'info');
+    } catch (error: any) {
+      setFormError(error?.message || 'We could not save your order. Please try again.');
+    }
   };
 
   const copyAccount = async () => {
