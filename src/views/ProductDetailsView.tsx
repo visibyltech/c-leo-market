@@ -21,6 +21,7 @@ import { formatNaira } from '../services/store';
 import { ProductCard } from '../components/ProductCard';
 import { CheckoutModal } from '../components/modals/CheckoutModal';
 import { BNPLModal } from '../components/modals/BNPLModal';
+import { PaySmallSmallModal } from '../components/modals/PaySmallSmallModal';
 import { ProductReview } from '../types';
 
 export const ProductDetailsView: React.FC = () => {
@@ -33,6 +34,7 @@ export const ProductDetailsView: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState(product?.image || '');
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isBNPLOpen, setIsBNPLOpen] = useState(false);
+  const [isPSSOpen, setIsPSSOpen] = useState(false);
 
   // Reviews state
   const [reviews, setReviews] = useState<ProductReview[]>([
@@ -273,7 +275,7 @@ export const ProductDetailsView: React.FC = () => {
                 </button>
               </div>
               <button
-                onClick={() => window.location.assign('https://shop.cleomarkets.com')}
+                onClick={() => setIsPSSOpen(true)}
                 className="w-full py-3 px-4 bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
