@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth';
+import { User, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, query, where, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb } from '../lib/firebase';
 import {
@@ -133,6 +133,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, fullName: string) => {
     const credential = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
     await updateProfile(credential.user, { displayName: fullName.trim() });
+    await sendEmailVerification(credential.user);
     const profile = { fullName: fullName.trim(), email: email.trim(), phone: '', address: '', city: '', state: '' };
     await setDoc(doc(firestoreDb, 'customers', credential.user.uid), { ...profile, uid: credential.user.uid, createdAt: new Date().toISOString() });
     setCustomer(profile);
