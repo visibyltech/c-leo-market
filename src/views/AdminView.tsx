@@ -139,7 +139,7 @@ export const AdminView: React.FC = () => {
             stockCount: source.is_in_stock === false ? 0 : 10,
             isFeatured: false,
             paySmallSmallDaily: dailyRate,
-            paySmallSmallDurationDays: monthsMatch ? Number(monthsMatch[1]) * 30 : undefined,
+            paySmallSmallDurationDays: monthsMatch ? Number(monthsMatch[1]) * 30 : 0,
             cleoShopUrl: permalink,
             description,
             specifications: {},
