@@ -100,10 +100,10 @@ export const PolicyView: React.FC = () => {
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
               <div className="flex items-center gap-2 font-bold text-slate-900">
                 <MapPin className="w-4 h-4 text-[#0B4FD8]" />
-                <span>Lagos Distribution Hub</span>
+                <span>Business Address</span>
               </div>
-              <p className="text-[11px] text-slate-500">Admiralty Way, Lekki Phase 1, Lagos, Nigeria</p>
-              <p className="text-[11px] text-slate-600">Hours: Mon - Sat: 8:00 AM – 6:00 PM</p>
+              <p className="text-[11px] text-slate-500">41 Church Street, Oshodi, Lagos, Nigeria</p>
+              <p className="text-[11px] text-slate-600">C-LEO Market Service (PSS)</p>
             </div>
 
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
