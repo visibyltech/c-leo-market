@@ -5,6 +5,7 @@ import { formatNaira } from '../../services/store';
 import { useShop } from '../../context/ShopContext';
 import { useNavigation } from '../../context/NavigationContext';
 import { AuthPanel } from '../AuthPanel';
+import { uploadToCloudinary } from '../../services/cloudinary';
 
 interface CheckoutModalProps {
   directProduct?: Product | null;
@@ -35,7 +36,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [city, setCity] = useState(customer.city || '');
   const [state, setState] = useState(customer.state || 'Lagos');
   const [notes, setNotes] = useState('');
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);\n  const [receiptFileName, setReceiptFileName] = useState('');\n  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptFileName, setReceiptFileName] = useState('');
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentStep, setPaymentStep] = useState<'details' | 'transfer' | 'success'>('details');
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
@@ -65,7 +68,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
     try {
-    setUploadingReceipt(true);\n    const idToken = await currentUser!.getIdToken();\n    const uploadForm = new FormData();\n    uploadForm.append('file', receiptFile);\n    uploadForm.append('folder', 'receipts');\n    const uploadResponse = await fetch(import.meta.env.VITE_R2_UPLOAD_URL || 'https://cleo-market-image-upload.talk2visibyl.workers.dev/upload', { method: 'POST', headers: { Authorization: `Bearer ${idToken}` }, body: uploadForm });\n    const uploadResult = await uploadResponse.json();\n    if (!uploadResponse.ok) throw new Error(uploadResult.error || 'Receipt upload failed.');\n    const newOrder = await createOrder({
+    setUploadingReceipt(true);
+    const uploadResult = await uploadToCloudinary(receiptFile, 'receipts');
+    const newOrder = await createOrder({
       customer: { fullName, email, phone, address, city, state, notes },
       items,
       subtotal,
@@ -76,12 +81,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       paymentMethod: 'transfer',
       paymentReference: paymentReference.trim() || 'Awaiting admin review',
       paymentStatus: 'pending',
-      receiptFileName,\n      receiptPath: uploadResult.key,
+      receiptFileName,
+      receiptPath: uploadResult.url,
     });
-    setCompletedOrder(newOrder);\n    setUploadingReceipt(false);
+    setCompletedOrder(newOrder);
     setPaymentStep('success');
     showToast('Order submitted. Payment is awaiting admin verification.', 'info');
     } catch (error: any) {
+      setUploadingReceipt(false);
       setFormError(error?.message || 'We could not save your order. Please try again.');
     }
   };
