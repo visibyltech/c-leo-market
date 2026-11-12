@@ -18,6 +18,7 @@ import {
 import { useShop } from '../context/ShopContext';
 import { useNavigation } from '../context/NavigationContext';
 import { formatNaira } from '../services/store';
+import { AuthPanel } from '../components/AuthPanel';
 
 export const AccountView: React.FC = () => {
   const { accountInitialTab, navigateTo } = useNavigation();
@@ -29,6 +30,7 @@ export const AccountView: React.FC = () => {
     notifications,
     markNotificationRead,
     showToast,
+    currentUser, signOutUser,
   } = useShop();
 
   const [activeTab, setActiveTab] = useState<'orders' | 'bnpl' | 'saved' | 'profile' | 'notifications'>(
@@ -51,6 +53,8 @@ export const AccountView: React.FC = () => {
     showToast('Profile information updated');
   };
 
+  if (!currentUser) return <div className="max-w-7xl mx-auto px-3 sm:px-6 py-10 pb-24 md:pb-12"><AuthPanel /></div>;
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 pb-24 md:pb-12">
       {/* Account Hero Banner */}
@@ -68,6 +72,7 @@ export const AccountView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 self-stretch sm:self-auto">
+          <button onClick={() => signOutUser().then(() => showToast('You have signed out.')).catch(() => showToast('Could not sign out.', 'error'))} className="px-3 py-1.5 rounded-lg bg-white/10 text-white font-bold text-xs">Sign Out</button>
           <button
             onClick={() => navigateTo('admin')}
             className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
