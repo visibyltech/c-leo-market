@@ -1,0 +1,6 @@
+{
+  "name": "C-LEO MARKET SERVICE (PSS) E-Commerce",
+  "description": "World-class mobile-first shopping platform for C-LEO Market Service (PSS) featuring electronics, appliances, Buy Now Pay Later, and Pay Small Small.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
