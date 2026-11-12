@@ -49,7 +49,7 @@ export const ProductDetailsView: React.FC = () => {
     },
     {
       id: 'rev-2',
-      productId: product.id,
+      productId: product?.id || '',
       userName: 'Amina Bello',
       rating: 5,
       comment: 'Genuine brand new item with official warranty card. C-LEO Market Service is my go-to store now.',
@@ -99,9 +99,9 @@ export const ProductDetailsView: React.FC = () => {
   };
 
   // Related products from same category
-  const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+  const relatedProducts = product
+    ? products.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 4)
+    : [];
 
   if (!product) {
     return (
