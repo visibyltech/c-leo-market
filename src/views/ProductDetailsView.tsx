@@ -40,7 +40,7 @@ export const ProductDetailsView: React.FC = () => {
   const [reviews, setReviews] = useState<ProductReview[]>([
     {
       id: 'rev-1',
-      productId: product.id,
+      productId: product?.id || '',
       userName: 'Emeka Nwosu',
       rating: 5,
       comment: 'Top quality product! Delivered in Lagos within 24 hours. The packaging was immaculate.',
@@ -62,9 +62,10 @@ export const ProductDetailsView: React.FC = () => {
   const [newReviewComment, setNewReviewComment] = useState('');
   const [newReviewRating, setNewReviewRating] = useState(5);
 
-  const wishlisted = isWishlisted(product.id);
+  const wishlisted = product ? isWishlisted(product.id) : false;
 
   const handleShare = () => {
+    if (!product) return;
     if (navigator.share) {
       navigator.share({
         title: product.name,
@@ -79,7 +80,7 @@ export const ProductDetailsView: React.FC = () => {
 
   const handleAddReview = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newReviewAuthor.trim() || !newReviewComment.trim()) return;
+    if (!product || !newReviewAuthor.trim() || !newReviewComment.trim()) return;
 
     const newRev: ProductReview = {
       id: `rev-${Date.now()}`,
@@ -101,6 +102,16 @@ export const ProductDetailsView: React.FC = () => {
   const relatedProducts = products
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 4);
+
+  if (!product) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+        <h2 className="text-lg font-bold text-slate-900">Product unavailable</h2>
+        <p className="mt-2 text-sm text-slate-600">This product may have been removed or its link is outdated.</p>
+        <button onClick={goBack} className="mt-5 px-5 py-3 rounded-xl bg-[#0B4FD8] text-white text-sm font-bold">Back to Store</button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 pb-24 md:pb-12">
