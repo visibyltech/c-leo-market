@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, query, where, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb } from '../lib/firebase';
 import {
   BNPLApplication,
@@ -38,9 +38,9 @@ interface ShopContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signOutUser: () => Promise<void>;
   products: Product[];
-  addProduct: (product: Omit<Product, 'id'>) => Product;
-  updateProduct: (id: string, updates: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<Product>;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
 
   cart: CartItem[];
   addToCart: (product: Product, quantity?: number) => void;
@@ -90,7 +90,7 @@ const ShopContext = createContext<ShopContextType | undefined>(undefined);
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [products, setProducts] = useState<Product[]>(getStoredProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>(getStoredCart);
   const [wishlist, setWishlist] = useState<string[]>(getStoredWishlist);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -116,13 +116,18 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }), []);
 
+  useEffect(() => onSnapshot(collection(firestoreDb, 'products'), (snapshot) => {
+    setProducts(snapshot.docs.map((item) => ({ ...item.data(), id: item.id } as Product)));
+  }, (error) => console.error('Catalogue sync failed', error)), []);
+
   useEffect(() => {
-    if (!currentUser) return;
-    const ordersQuery = query(collection(firestoreDb, 'orders'), where('userId', '==', currentUser.uid));
+    if (!currentUser) { setOrders([]); return; }
+    const admin = currentUser.email?.trim().toLowerCase() === 'tvplugng@gmail.com';
+    const ordersQuery = admin ? collection(firestoreDb, 'orders') : query(collection(firestoreDb, 'orders'), where('userId', '==', currentUser.uid));
     return onSnapshot(ordersQuery, (snapshot) => {
-      const cloudOrders = snapshot.docs.map((item) => item.data() as Order);
+      const cloudOrders = snapshot.docs.map((item) => ({ ...item.data(), id: item.id } as Order));
       setOrders(cloudOrders.sort((a, b) => b.date.localeCompare(a.date)));
-    }, (error) => console.error('Could not sync customer orders', error));
+    }, (error) => console.error('Could not sync orders', error));
   }, [currentUser]);
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -140,12 +145,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOutUser = async () => { await signOut(firebaseAuth); };
 
   // Sync state to localStorage
-  useEffect(() => saveStoredProducts(products), [products]);
   useEffect(() => saveStoredCart(cart), [cart]);
   useEffect(() => saveStoredWishlist(wishlist), [wishlist]);
-  useEffect(() => saveStoredBNPL(bnplApplications), [bnplApplications]);
-  useEffect(() => saveStoredCustomer(customer), [customer]);
-  useEffect(() => saveStoredNotifications(notifications), [notifications]);
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     const id = Date.now().toString() + Math.random().toString().slice(2, 6);
@@ -155,24 +156,25 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 3200);
   };
 
-  const addProduct = (newProd: Omit<Product, 'id'>): Product => {
-    const id = `prod-${Date.now()}`;
+  const addProduct = async (newProd: Omit<Product, 'id'>): Promise<Product> => {
+    if (currentUser?.email?.trim().toLowerCase() !== 'tvplugng@gmail.com') throw new Error('Administrator access required.');
+    const id = doc(collection(firestoreDb, 'products')).id;
     const product: Product = { ...newProd, id };
-    setProducts((prev) => [product, ...prev]);
-    showToast(`Product "${product.name.slice(0, 24)}..." created successfully`);
+    await setDoc(doc(firestoreDb, 'products', id), product);
+    showToast('Product added to the live catalogue.');
     return product;
   };
 
-  const updateProduct = (id: string, updates: Partial<Product>) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
+  const updateProduct = async (id: string, updates: Partial<Product>) => {
+    if (currentUser?.email?.trim().toLowerCase() !== 'tvplugng@gmail.com') throw new Error('Administrator access required.');
+    await updateDoc(doc(firestoreDb, 'products', id), updates);
     showToast('Product updated successfully');
   };
 
-  const deleteProduct = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-    showToast('Product removed from catalog', 'info');
+  const deleteProduct = async (id: string) => {
+    if (currentUser?.email?.trim().toLowerCase() !== 'tvplugng@gmail.com') throw new Error('Administrator access required.');
+    await deleteDoc(doc(firestoreDb, 'products', id));
+    showToast('Product removed from catalogue', 'info');
   };
 
   const addToCart = (product: Product, quantity = 1) => {
@@ -260,17 +262,15 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newOrder;
   };
 
-  const updateOrderStatus = (orderId: string, status: Order['status']) => {
-    setOrders((prev) =>
-      prev.map((ord) => (ord.id === orderId ? { ...ord, status } : ord))
-    );
-    showToast(`Order status updated to ${status}`);
+  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+    if (currentUser?.email?.trim().toLowerCase() !== 'tvplugng@gmail.com') throw new Error('Administrator access required.');
+    await updateDoc(doc(firestoreDb, 'orders', orderId), { status, updatedAt: new Date().toISOString() });
+    showToast('Order status updated to ' + status);
   };
 
-  const updatePaymentStatus = (orderId: string, paymentStatus: Order['paymentStatus']) => {
-    setOrders((prev) =>
-      prev.map((ord) => (ord.id === orderId ? { ...ord, paymentStatus } : ord))
-    );
+  const updatePaymentStatus = async (orderId: string, paymentStatus: Order['paymentStatus']) => {
+    if (currentUser?.email?.trim().toLowerCase() !== 'tvplugng@gmail.com') throw new Error('Administrator access required.');
+    await updateDoc(doc(firestoreDb, 'orders', orderId), { paymentStatus, updatedAt: new Date().toISOString() });
   };
 
   const submitBNPLApplication = (
