@@ -35,7 +35,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [city, setCity] = useState(customer.city || '');
   const [state, setState] = useState(customer.state || 'Lagos');
   const [notes, setNotes] = useState('');
-  const [receiptFileName, setReceiptFileName] = useState('');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);\n  const [receiptFileName, setReceiptFileName] = useState('');\n  const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentStep, setPaymentStep] = useState<'details' | 'transfer' | 'success'>('details');
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
@@ -60,12 +60,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   const handleSubmitOrder = async () => {
-    if (!receiptFileName) {
+    if (!receiptFile) {
       setFormError('Please select your transfer receipt before submitting.');
       return;
     }
     try {
-    const newOrder = await createOrder({
+    setUploadingReceipt(true);\n    const idToken = await currentUser!.getIdToken();\n    const uploadForm = new FormData();\n    uploadForm.append('file', receiptFile);\n    uploadForm.append('folder', 'receipts');\n    const uploadResponse = await fetch(import.meta.env.VITE_R2_UPLOAD_URL || 'https://cleo-market-image-upload.talk2visibyl.workers.dev/upload', { method: 'POST', headers: { Authorization: `Bearer ${idToken}` }, body: uploadForm });\n    const uploadResult = await uploadResponse.json();\n    if (!uploadResponse.ok) throw new Error(uploadResult.error || 'Receipt upload failed.');\n    const newOrder = await createOrder({
       customer: { fullName, email, phone, address, city, state, notes },
       items,
       subtotal,
@@ -76,9 +76,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       paymentMethod: 'transfer',
       paymentReference: paymentReference.trim() || 'Awaiting admin review',
       paymentStatus: 'pending',
-      receiptFileName,
+      receiptFileName,\n      receiptPath: uploadResult.key,
     });
-    setCompletedOrder(newOrder);
+    setCompletedOrder(newOrder);\n    setUploadingReceipt(false);
     setPaymentStep('success');
     showToast('Order submitted. Payment is awaiting admin verification.', 'info');
     } catch (error: any) {
@@ -144,12 +144,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="flex items-center justify-between gap-2"><div><div className="text-xs text-slate-600">Account number</div><div className="text-2xl font-black tracking-wider text-[#0B4FD8]">{ACCOUNT_NUMBER}</div></div><button onClick={copyAccount} type="button" className="px-3 py-2 bg-white border border-blue-200 rounded-lg text-xs font-bold flex items-center gap-1"><Copy className="w-4 h-4" />Copy</button></div>
               <div className="pt-2 border-t border-blue-200 flex justify-between items-center"><span className="text-sm font-bold">Transfer exactly</span><strong className="text-2xl text-[#0B4FD8]">{formatNaira(totalAmount)}</strong></div>
             </div>
-            <label className="block text-xs font-semibold text-slate-800">Upload transfer receipt *<span className="block mt-1 text-[11px] font-normal text-slate-500">Choose the screenshot or PDF receipt from your phone.</span><input type="file" accept="image/*,.pdf" onChange={e => { setReceiptFileName(e.target.files?.[0]?.name || ''); setFormError(''); }} className="mt-2 block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-blue-100 file:px-3 file:py-2 file:text-blue-800" /></label>
+            <label className="block text-xs font-semibold text-slate-800">Upload transfer receipt *<span className="block mt-1 text-[11px] font-normal text-slate-500">Choose the screenshot or PDF receipt from your phone.</span><input type="file" accept="image/*,.pdf" onChange={e => { const file = e.target.files?.[0] || null; setReceiptFile(file); setReceiptFileName(file?.name || ''); setFormError(''); }} className="mt-2 block w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-blue-100 file:px-3 file:py-2 file:text-blue-800" /></label>
             {receiptFileName && <p className="text-xs text-emerald-700 flex items-center gap-2"><Upload className="w-4 h-4" />Selected: {receiptFileName}</p>}
             <label className="block text-xs font-semibold text-slate-800">Transfer narration / reference (optional)<input value={paymentReference} onChange={e => setPaymentReference(e.target.value)} placeholder="Enter your bank transfer reference" className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-xs" /></label>
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 flex gap-2"><Clock className="w-4 h-4 shrink-0" />Your order will remain pending until C-LEO Market admin confirms the payment. Selecting a receipt here records its filename only in this temporary version; the actual file upload and shared admin access will be connected when Firebase/Cloudflare is configured.</div>
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 flex gap-2"><Clock className="w-4 h-4 shrink-0" />Your order will remain pending until C-LEO Market admin confirms the payment. Your receipt is uploaded securely to C-LEO Market storage. Your order remains pending until the admin verifies the transfer.</div>
             {formError && <p className="text-xs text-rose-700">{formError}</p>}
-            <div className="flex gap-3"><button onClick={() => setPaymentStep('details')} className="px-4 py-3 text-xs font-semibold text-slate-700 border rounded-xl">Back</button><button onClick={handleSubmitOrder} className="flex-1 py-3 bg-[#0B4FD8] text-white text-sm font-bold rounded-xl">Submit Order for Verification</button></div>
+            <div className="flex gap-3"><button onClick={() => setPaymentStep('details')} className="px-4 py-3 text-xs font-semibold text-slate-700 border rounded-xl">Back</button><button onClick={handleSubmitOrder} disabled={uploadingReceipt} className="flex-1 py-3 bg-[#0B4FD8] text-white text-sm font-bold rounded-xl disabled:opacity-60">{uploadingReceipt ? 'Uploading receipt…' : 'Submit Order for Verification'}</button></div>
           </div>
         )}
 
