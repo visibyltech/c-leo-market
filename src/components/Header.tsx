@@ -18,6 +18,7 @@ import { CATEGORIES } from '../data/categories';
 export const Header: React.FC = () => {
   const { page, navigateTo, openProduct, openCategory, openSearch } = useNavigation();
   const {
+    currentUser,
     cartCount,
     wishlistCount,
     notifications,
@@ -27,6 +28,8 @@ export const Header: React.FC = () => {
     setIsCartDrawerOpen,
   } = useShop();
 
+  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
+  const isAdmin = !!adminEmail && currentUser?.email?.trim().toLowerCase() === adminEmail;
   const [searchInput, setSearchInput] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -91,13 +94,7 @@ export const Header: React.FC = () => {
               Track Order
             </button>
             <span className="text-blue-300">|</span>
-            <button
-              onClick={() => navigateTo('admin')}
-              className="text-amber-300 hover:text-white font-medium flex items-center gap-1 cursor-pointer"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Admin Portal</span>
-            </button>
+            {isAdmin && <button onClick={() => navigateTo('admin')} className="text-amber-300 hover:text-white font-medium flex items-center gap-1 cursor-pointer"><ShieldCheck className="w-3.5 h-3.5" /><span>Admin Portal</span></button>}
           </div>
         </div>
       </div>
