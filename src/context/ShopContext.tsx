@@ -15,14 +15,12 @@ import {
   getStoredCart,
   getStoredCustomer,
   getStoredNotifications,
-  getStoredOrders,
   getStoredProducts,
   getStoredWishlist,
   saveStoredBNPL,
   saveStoredCart,
   saveStoredCustomer,
   saveStoredNotifications,
-  saveStoredOrders,
   saveStoredProducts,
   saveStoredWishlist,
 } from '../services/store';
@@ -33,7 +31,12 @@ interface Toast {
   type: 'success' | 'info' | 'error';
 }
 
-interface ShopContextType {\n  currentUser: User | null;\n  authLoading: boolean;\n  signUp: (email: string, password: string, fullName: string) => Promise<void>;\n  signIn: (email: string, password: string) => Promise<void>;\n  signOutUser: () => Promise<void>;
+interface ShopContextType {
+  currentUser: User | null;
+  authLoading: boolean;
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOutUser: () => Promise<void>;
   products: Product[];
   addProduct: (product: Omit<Product, 'id'>) => Product;
   updateProduct: (id: string, updates: Partial<Product>) => void;
@@ -85,10 +88,12 @@ interface ShopContextType {\n  currentUser: User | null;\n  authLoading: boolean
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);\n  const [authLoading, setAuthLoading] = useState(true);\n  const [products, setProducts] = useState<Product[]>(getStoredProducts);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(getStoredProducts);
   const [cart, setCart] = useState<CartItem[]>(getStoredCart);
   const [wishlist, setWishlist] = useState<string[]>(getStoredWishlist);
-  const [orders, setOrders] = useState<Order[]>(getStoredOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [bnplApplications, setBnplApplications] = useState<BNPLApplication[]>(getStoredBNPL);
   const [customer, setCustomer] = useState<CustomerDetails>(getStoredCustomer);
   const [notifications, setNotifications] = useState<NotificationItem[]>(getStoredNotifications);
@@ -138,7 +143,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => saveStoredProducts(products), [products]);
   useEffect(() => saveStoredCart(cart), [cart]);
   useEffect(() => saveStoredWishlist(wishlist), [wishlist]);
-  useEffect(() => saveStoredOrders(orders), [orders]);
   useEffect(() => saveStoredBNPL(bnplApplications), [bnplApplications]);
   useEffect(() => saveStoredCustomer(customer), [customer]);
   useEffect(() => saveStoredNotifications(notifications), [notifications]);
@@ -237,7 +241,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       trackingNumber,
     };
 
-    setOrders((prev) => [newOrder, ...prev]);\n    if (currentUser) setDoc(doc(firestoreDb, 'orders', newOrder.id), { ...newOrder, userId: currentUser.uid }).catch((error) => { console.error('Order save failed', error); showToast('Order could not sync to your account. Please contact support.', 'error'); });
+    setOrders((prev) => [newOrder, ...prev]);
+    if (currentUser) setDoc(doc(firestoreDb, 'orders', newOrder.id), { ...newOrder, userId: currentUser.uid }).catch((error) => { console.error('Order save failed', error); showToast('Order could not sync to your account. Please contact support.', 'error'); });
 
     // Add customer notification
     const newNotif: NotificationItem = {
@@ -305,7 +310,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateCustomer = (details: Partial<CustomerDetails>) => {
-    setCustomer((prev) => {\n      const updated = { ...prev, ...details };\n      if (currentUser) setDoc(doc(firestoreDb, 'customers', currentUser.uid), { ...updated, uid: currentUser.uid, updatedAt: new Date().toISOString() }, { merge: true }).catch((error) => console.error('Profile save failed', error));\n      return updated;\n    });
+    const updated = { ...customer, ...details };
+    setCustomer(updated);
+    if (currentUser) setDoc(doc(firestoreDb, 'customers', currentUser.uid), { ...updated, uid: currentUser.uid, updatedAt: new Date().toISOString() }, { merge: true }).catch((error) => { console.error('Profile save failed', error); showToast('Profile could not be saved to your account.', 'error'); });
   };
 
   const markNotificationRead = (id: string) => {
