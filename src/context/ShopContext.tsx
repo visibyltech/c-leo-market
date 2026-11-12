@@ -204,7 +204,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const newNotif: NotificationItem = {
       id: `notif-${Date.now()}`,
       title: `Order Confirmed: ${orderNumber}`,
-      message: `Your payment was verified via Paystack. Delivery tracking: ${trackingNumber}`,
+      message: `Your order has been received. Payment is pending admin verification. Order tracking: ${trackingNumber}`,
       date: 'Just now',
       read: false,
       type: 'order',
