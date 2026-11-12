@@ -1,8 +1,12 @@
 interface Env {
   IMAGES: R2Bucket;
-  FIREBASE_PROJECT_ID: string;
-  ALLOWED_ORIGIN: string;
+  FIREBASE_PROJECT_ID?: string;
+  ALLOWED_ORIGIN?: string;
 }
+const DEFAULT_PROJECT_ID = 'c-leo-market';
+const ALLOWED_ORIGINS = new Set([
+  'https://c-leo-market-eight.vercel.app',
+]);
 const json = (data: unknown, status = 200, origin = '*') =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization,content-type', 'access-control-allow-methods': 'POST,GET,OPTIONS', 'vary': 'Origin' } });
 
@@ -28,7 +32,7 @@ async function verifyFirebaseToken(token: string, projectId: string) {
 export default {
   async fetch(request: Request, env: Env) {
     const origin = request.headers.get('Origin') || '';
-    const allowed = env.ALLOWED_ORIGIN || '';
+    const allowed = ALLOWED_ORIGINS.has(origin) ? origin : '';
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-origin': origin === allowed ? allowed : 'null', 'access-control-allow-methods': 'POST,GET,OPTIONS', 'access-control-allow-headers': 'authorization,content-type', 'vary': 'Origin' } });
     if (origin !== allowed) return json({ error: 'Origin not allowed' }, 403, 'null');
     const url = new URL(request.url);
@@ -36,7 +40,7 @@ export default {
       try {
         const auth = request.headers.get('Authorization') || '';
         if (!auth.startsWith('Bearer ')) return json({ error: 'Sign in required' }, 401, allowed);
-        const user = await verifyFirebaseToken(auth.slice(7), env.FIREBASE_PROJECT_ID);
+        const user = await verifyFirebaseToken(auth.slice(7), env.FIREBASE_PROJECT_ID || DEFAULT_PROJECT_ID);
         const form = await request.formData();
         const file = form.get('file');
         const folder = String(form.get('folder') || '');
