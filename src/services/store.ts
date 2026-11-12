@@ -16,28 +16,7 @@ const STORAGE_KEYS = {
   WISHLIST: 'pss_wishlist_v1',
 };
 
-export const getStoredProducts = (): Product[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(INITIAL_PRODUCTS));
-      return INITIAL_PRODUCTS;
-    }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_PRODUCTS;
-
-    // Refresh legacy local image paths saved before Vite asset imports were corrected.
-    const currentImages = new Map(INITIAL_PRODUCTS.map((product) => [product.id, product.image]));
-    return parsed.map((product: Product) => ({
-      ...product,
-      image: typeof product.image === 'string' && product.image.startsWith('/src/assets/images/')
-        ? (currentImages.get(product.id) || product.image.replace('/src/assets/images/', '/assets/images/'))
-        : product.image,
-    }));
-  } catch {
-    return INITIAL_PRODUCTS;
-  }
-};
+export const getStoredProducts = (): Product[] => [];
 
 export const saveStoredProducts = (products: Product[]) => {
   try {
