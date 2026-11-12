@@ -312,9 +312,23 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateCustomer = (details: Partial<CustomerDetails>) => {
-    const updated = { ...customer, ...details };
+    const safeDetails = { ...details };
+    delete safeDetails.email;
+    const updated = { ...customer, ...safeDetails, email: currentUser?.email || customer.email };
     setCustomer(updated);
-    if (currentUser) setDoc(doc(firestoreDb, 'customers', currentUser.uid), { ...updated, uid: currentUser.uid, updatedAt: new Date().toISOString() }, { merge: true }).catch((error) => { console.error('Profile save failed', error); showToast('Profile could not be saved to your account.', 'error'); });
+    if (currentUser) {
+      setDoc(doc(firestoreDb, 'customers', currentUser.uid), {
+        fullName: updated.fullName,
+        phone: updated.phone,
+        address: updated.address,
+        city: updated.city,
+        state: updated.state,
+        email: currentUser.email || '',
+        uid: currentUser.uid,
+        updatedAt: new Date().toISOString()
+      }, { merge: true }).then(() => showToast('Profile information saved.'))
+        .catch((error) => { console.error('Profile save failed', error); showToast('Profile could not be saved. Please try again.', 'error'); });
+    }
   };
 
   const markNotificationRead = (id: string) => {
