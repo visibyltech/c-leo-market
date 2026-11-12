@@ -31,10 +31,10 @@ async function r2Request(env: Env, method: 'PUT' | 'GET', key: string, body?: Ar
   const headers: Record<string,string> = { host: url.host, 'x-amz-content-sha256': payloadHash, 'x-amz-date': now };
   if (method === 'PUT') headers['content-type'] = contentType;
   const signedHeaders = Object.keys(headers).sort().join(';');
-  const canonicalHeaders = Object.keys(headers).sort().map(k => k + ':' + headers[k].trim() + '\\n').join('');
-  const canonicalRequest = [method, url.pathname, '', canonicalHeaders, signedHeaders, payloadHash].join('\\n');
+  const canonicalHeaders = Object.keys(headers).sort().map(k => k + ':' + headers[k].trim() + '\n').join('');
+  const canonicalRequest = [method, url.pathname, '', canonicalHeaders, signedHeaders, payloadHash].join('\n');
   const scope = date + '/auto/s3/aws4_request';
-  const stringToSign = ['AWS4-HMAC-SHA256', now, scope, await sha256(canonicalRequest)].join('\\n');
+  const stringToSign = ['AWS4-HMAC-SHA256', now, scope, await sha256(canonicalRequest)].join('\n');
   const kDate = await hmac(new TextEncoder().encode('AWS4' + env.R2_SECRET_ACCESS_KEY), date);
   const kRegion = await hmac(kDate, 'auto');
   const kService = await hmac(kRegion, 's3');
@@ -88,7 +88,20 @@ export default {
         return json({ key, fileName: file.name, contentType: file.type, size: file.size }, 201, allowed);
       } catch (error) { return json({ error: error instanceof Error ? error.message : 'Upload failed' }, 400, allowed); }
     }
-    if (request.method === 'GET' && url.pathname.startsWith('/receipts/')) {\n      try {\n        const auth = request.headers.get('Authorization') || '';\n        if (!auth.startsWith('Bearer ')) return json({ error: 'Sign in required' }, 401, allowed);\n        const user = await verifyFirebaseToken(auth.slice(7), env.FIREBASE_PROJECT_ID);\n        const key = url.pathname.slice(1);\n        const object = await env.IMAGES.get(key);\n        if (!object || !key.startsWith('receipts/') || (object.customMetadata?.owner !== user.uid && user.email !== 'tvplugng@gmail.com')) return json({ error: 'Not found' }, 404, allowed);\n        const headers = new Headers({ 'content-type': object.httpMetadata?.contentType || 'application/octet-stream', 'content-disposition': 'inline', 'cache-control': 'private, no-store', 'access-control-allow-origin': allowed });\n        return new Response(object.body, { headers });\n      } catch (error) { return json({ error: error instanceof Error ? error.message : 'Access denied' }, 403, allowed); }\n    }\n    if (request.method === 'GET' && url.pathname.startsWith('/images/')) {
+    if (request.method === 'GET' && url.pathname.startsWith('/receipts/')) {
+      try {
+        const auth = request.headers.get('Authorization') || '';
+        if (!auth.startsWith('Bearer ')) return json({ error: 'Sign in required' }, 401, allowed);
+        const user = await verifyFirebaseToken(auth.slice(7), env.FIREBASE_PROJECT_ID || DEFAULT_PROJECT_ID);
+        const key = url.pathname.slice(1);
+        if (!key.startsWith('receipts/' + user.uid + '/') && user.email !== 'tvplugng@gmail.com') return json({ error: 'Not found' }, 404, allowed);
+        const object = await r2Request(env, 'GET', key);
+        if (!object.ok) return json({ error: 'Not found' }, 404, allowed);
+        const headers = new Headers({ 'content-type': object.headers.get('content-type') || 'application/octet-stream', 'content-disposition': 'inline', 'cache-control': 'private, no-store', 'access-control-allow-origin': allowed });
+        return new Response(object.body, { headers });
+      } catch (error) { return json({ error: error instanceof Error ? error.message : 'Access denied' }, 403, allowed); }
+    }
+    if (request.method === 'GET' && url.pathname.startsWith('/images/')) {
       const key = url.pathname.slice('/images/'.length);
       if (!key.startsWith('products/')) return json({ error: 'Not found' }, 404, allowed);
       const object = await r2Request(env, 'GET', key);
