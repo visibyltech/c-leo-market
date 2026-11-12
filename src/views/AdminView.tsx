@@ -506,7 +506,7 @@ export const AdminView: React.FC = () => {
                   <div className="space-y-1">
                     <div>Items: <strong>{ord.items.map((i) => `${i.product.name} (x${i.quantity})`).join(', ')}</strong></div>
                     <div className="text-slate-600">Payment: <strong className="capitalize">{ord.paymentMethod}</strong> · <strong className="capitalize">{ord.paymentStatus}</strong></div>
-                    {ord.receiptFileName && <div className="text-slate-600">Receipt selected: {ord.receiptFileName} <span className="text-amber-700">(file upload awaits cloud storage setup)</span></div>}
+                    {ord.receiptFileName && <div className="text-slate-600">Receipt: {ord.receiptPath ? <a href={ord.receiptPath} target="_blank" rel="noreferrer" className="text-blue-700 underline">{ord.receiptFileName}</a> : ord.receiptFileName}</div>}
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="font-black text-slate-950 text-sm tabular-nums">Total: {formatNaira(ord.total)}</div>
