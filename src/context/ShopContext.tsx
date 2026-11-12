@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from 'firebase/auth';
+import { doc, getDoc, setDoc, collection, query, where, onSnapshot, updateDoc } from 'firebase/firestore';
+import { firebaseAuth, firestoreDb } from '../lib/firebase';
 import {
   BNPLApplication,
   CartItem,
@@ -12,14 +15,12 @@ import {
   getStoredCart,
   getStoredCustomer,
   getStoredNotifications,
-  getStoredOrders,
   getStoredProducts,
   getStoredWishlist,
   saveStoredBNPL,
   saveStoredCart,
   saveStoredCustomer,
   saveStoredNotifications,
-  saveStoredOrders,
   saveStoredProducts,
   saveStoredWishlist,
 } from '../services/store';
@@ -31,6 +32,11 @@ interface Toast {
 }
 
 interface ShopContextType {
+  currentUser: User | null;
+  authLoading: boolean;
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOutUser: () => Promise<void>;
   products: Product[];
   addProduct: (product: Omit<Product, 'id'>) => Product;
   updateProduct: (id: string, updates: Partial<Product>) => void;
@@ -50,7 +56,7 @@ interface ShopContextType {
   wishlistCount: number;
 
   orders: Order[];
-  createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'date' | 'trackingNumber'>) => Order;
+  createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'date' | 'trackingNumber'>) => Promise<Order>;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   updatePaymentStatus: (orderId: string, paymentStatus: Order['paymentStatus']) => void;
 
@@ -82,10 +88,12 @@ interface ShopContextType {
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
 
 export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>(getStoredProducts);
   const [cart, setCart] = useState<CartItem[]>(getStoredCart);
   const [wishlist, setWishlist] = useState<string[]>(getStoredWishlist);
-  const [orders, setOrders] = useState<Order[]>(getStoredOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [bnplApplications, setBnplApplications] = useState<BNPLApplication[]>(getStoredBNPL);
   const [customer, setCustomer] = useState<CustomerDetails>(getStoredCustomer);
   const [notifications, setNotifications] = useState<NotificationItem[]>(getStoredNotifications);
@@ -95,11 +103,46 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  useEffect(() => onAuthStateChanged(firebaseAuth, async (user) => {
+    setCurrentUser(user);
+    setAuthLoading(false);
+    if (user) {
+      try {
+        const profile = await getDoc(doc(firestoreDb, 'customers', user.uid));
+        if (profile.exists()) setCustomer((prev) => ({ ...prev, ...profile.data() } as CustomerDetails));
+      } catch (error) { console.error('Could not load customer profile', error); }
+    } else {
+      setOrders([]);
+    }
+  }), []);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const ordersQuery = query(collection(firestoreDb, 'orders'), where('userId', '==', currentUser.uid));
+    return onSnapshot(ordersQuery, (snapshot) => {
+      const cloudOrders = snapshot.docs.map((item) => item.data() as Order);
+      setOrders(cloudOrders.sort((a, b) => b.date.localeCompare(a.date)));
+    }, (error) => console.error('Could not sync customer orders', error));
+  }, [currentUser]);
+
+  const signUp = async (email: string, password: string, fullName: string) => {
+    const credential = await createUserWithEmailAndPassword(firebaseAuth, email.trim(), password);
+    await updateProfile(credential.user, { displayName: fullName.trim() });
+    const profile = { fullName: fullName.trim(), email: email.trim(), phone: '', address: '', city: '', state: '' };
+    await setDoc(doc(firestoreDb, 'customers', credential.user.uid), { ...profile, uid: credential.user.uid, createdAt: new Date().toISOString() });
+    setCustomer(profile);
+  };
+
+  const signIn = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+  };
+
+  const signOutUser = async () => { await signOut(firebaseAuth); };
+
   // Sync state to localStorage
   useEffect(() => saveStoredProducts(products), [products]);
   useEffect(() => saveStoredCart(cart), [cart]);
   useEffect(() => saveStoredWishlist(wishlist), [wishlist]);
-  useEffect(() => saveStoredOrders(orders), [orders]);
   useEffect(() => saveStoredBNPL(bnplApplications), [bnplApplications]);
   useEffect(() => saveStoredCustomer(customer), [customer]);
   useEffect(() => saveStoredNotifications(notifications), [notifications]);
@@ -186,7 +229,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isWishlisted = (productId: string) => wishlist.includes(productId);
   const wishlistCount = wishlist.length;
 
-  const createOrder = (orderData: Omit<Order, 'id' | 'orderNumber' | 'date' | 'trackingNumber'>): Order => {
+  const createOrder = async (orderData: Omit<Order, 'id' | 'orderNumber' | 'date' | 'trackingNumber'>): Promise<Order> => {
+    if (!currentUser) throw new Error('Please sign in before placing an order.');
     const randomDigits = Math.floor(10000 + Math.random() * 90000);
     const orderNumber = `PSS-ORD-${randomDigits}`;
     const trackingNumber = `PSS-TRK-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -198,6 +242,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       trackingNumber,
     };
 
+    await setDoc(doc(firestoreDb, 'orders', newOrder.id), { ...newOrder, userId: currentUser.uid });
     setOrders((prev) => [newOrder, ...prev]);
 
     // Add customer notification
@@ -266,7 +311,9 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateCustomer = (details: Partial<CustomerDetails>) => {
-    setCustomer((prev) => ({ ...prev, ...details }));
+    const updated = { ...customer, ...details };
+    setCustomer(updated);
+    if (currentUser) setDoc(doc(firestoreDb, 'customers', currentUser.uid), { ...updated, uid: currentUser.uid, updatedAt: new Date().toISOString() }, { merge: true }).catch((error) => { console.error('Profile save failed', error); showToast('Profile could not be saved to your account.', 'error'); });
   };
 
   const markNotificationRead = (id: string) => {
@@ -284,6 +331,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <ShopContext.Provider
       value={{
+        currentUser, authLoading, signUp, signIn, signOutUser,
         products,
         addProduct,
         updateProduct,

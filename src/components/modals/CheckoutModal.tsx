@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Truck, ArrowRight, AlertCircle, Copy, Building2, CheckCircle2, Clock, Upload } from 'lucide-react';
 import { CartItem, Product, Order } from '../../types';
 import { formatNaira } from '../../services/store';
 import { useShop } from '../../context/ShopContext';
 import { useNavigation } from '../../context/NavigationContext';
+import { AuthPanel } from '../AuthPanel';
 
 interface CheckoutModalProps {
   directProduct?: Product | null;
@@ -22,7 +23,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { cart, createOrder, customer, updateCustomer, showToast } = useShop();
+  const { cart, createOrder, customer, updateCustomer, showToast, currentUser, authLoading } = useShop();
   const { navigateTo } = useNavigation();
   const items: CartItem[] = directProduct ? [{ product: directProduct, quantity: directQuantity }] : cart;
   const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -40,7 +41,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
   const [formError, setFormError] = useState('');
 
-  if (!isOpen || items.length === 0) return null;
+  useEffect(() => { if (currentUser) { setFullName(currentUser.displayName || customer.fullName || ''); setEmail(currentUser.email || customer.email || ''); } }, [currentUser, customer.fullName, customer.email]);
+
+  if (!isOpen || items.length === 0 || authLoading) return null;
+  if (!currentUser) return <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 bg-black/60"><div className="relative w-full max-w-md"><button onClick={onClose} className="absolute -top-10 right-0 text-white p-2" aria-label="Close"><X /></button><AuthPanel compact /></div></div>;
   const deliveryFee = state === 'Lagos' ? 2500 : state === 'Abuja (FCT)' ? 3500 : 4500;
   const totalAmount = subtotal + deliveryFee;
 
@@ -55,12 +59,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setPaymentStep('transfer');
   };
 
-  const handleSubmitOrder = () => {
+  const handleSubmitOrder = async () => {
     if (!receiptFileName) {
       setFormError('Please select your transfer receipt before submitting.');
       return;
     }
-    const newOrder = createOrder({
+    try {
+    const newOrder = await createOrder({
       customer: { fullName, email, phone, address, city, state, notes },
       items,
       subtotal,
@@ -76,6 +81,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setCompletedOrder(newOrder);
     setPaymentStep('success');
     showToast('Order submitted. Payment is awaiting admin verification.', 'info');
+    } catch (error: any) {
+      setFormError(error?.message || 'We could not save your order. Please try again.');
+    }
   };
 
   const copyAccount = async () => {
