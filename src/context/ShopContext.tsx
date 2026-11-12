@@ -56,7 +56,7 @@ interface ShopContextType {
   wishlistCount: number;
 
   orders: Order[];
-  createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'date' | 'trackingNumber'>) => Order;
+  createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'date' | 'trackingNumber'>) => Promise<Order>;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
   updatePaymentStatus: (orderId: string, paymentStatus: Order['paymentStatus']) => void;
 
@@ -229,7 +229,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isWishlisted = (productId: string) => wishlist.includes(productId);
   const wishlistCount = wishlist.length;
 
-  const createOrder = (orderData: Omit<Order, 'id' | 'orderNumber' | 'date' | 'trackingNumber'>): Order => {
+  const createOrder = async (orderData: Omit<Order, 'id' | 'orderNumber' | 'date' | 'trackingNumber'>): Promise<Order> => {
+    if (!currentUser) throw new Error('Please sign in before placing an order.');
     const randomDigits = Math.floor(10000 + Math.random() * 90000);
     const orderNumber = `PSS-ORD-${randomDigits}`;
     const trackingNumber = `PSS-TRK-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -241,8 +242,8 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       trackingNumber,
     };
 
+    await setDoc(doc(firestoreDb, 'orders', newOrder.id), { ...newOrder, userId: currentUser.uid });
     setOrders((prev) => [newOrder, ...prev]);
-    if (currentUser) setDoc(doc(firestoreDb, 'orders', newOrder.id), { ...newOrder, userId: currentUser.uid }).catch((error) => { console.error('Order save failed', error); showToast('Order could not sync to your account. Please contact support.', 'error'); });
 
     // Add customer notification
     const newNotif: NotificationItem = {
