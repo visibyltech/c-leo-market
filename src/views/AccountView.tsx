@@ -74,9 +74,8 @@ export const AccountView: React.FC = () => {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    updateCustomer({ fullName: name, email, phone, address, city, state });
+    updateCustomer({ fullName: name, phone, address, city, state });
     setIsEditingProfile(false);
-    showToast('Profile information updated');
   };
 
   if (authLoading) return <div className="py-16 text-center text-sm text-slate-500">Loading your account…</div>;
@@ -384,9 +383,8 @@ export const AccountView: React.FC = () => {
                 <label className="block text-slate-600 font-semibold mb-1">Email Address</label>
                 <input
                   type="email"
-                  disabled={!isEditingProfile}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  disabled
+                  value={currentUser.email || email}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 disabled:opacity-75 focus:outline-none focus:border-[#0B4FD8]"
                 />
               </div>
