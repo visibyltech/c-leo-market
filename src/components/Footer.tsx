@@ -66,7 +66,7 @@ export const Footer: React.FC = () => {
             </p>
             <p className="flex items-center gap-2">
               <MapPin className="w-3.5 h-3.5 text-rose-400" />
-              <span>Lekki Phase 1, Lagos & CBD, Abuja</span>
+              <span>41 Church Street, Oshodi, Lagos, Nigeria</span>
             </p>
           </div>
         </div>
@@ -112,11 +112,7 @@ export const Footer: React.FC = () => {
                 Buyer Protection
               </button>
             </li>
-            <li>
-              <button onClick={() => navigateTo('admin')} className="text-amber-400 hover:text-amber-300 font-semibold cursor-pointer">
-                Admin Management Portal
-              </button>
-            </li>
+
           </ul>
         </div>
 
