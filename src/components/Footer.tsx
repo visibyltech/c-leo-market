@@ -120,15 +120,15 @@ export const Footer: React.FC = () => {
         <div className="space-y-3">
           <h4 className="text-white font-bold text-xs uppercase tracking-wider">Payment & Trust</h4>
           <p className="text-slate-400 text-xs">
-            Secured payments powered by Paystack. Supports Mastercard, Visa, Verve, Bank Transfer and USSD.
+            Payments are made by bank transfer and verified manually by our team.
           </p>
           <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700/60 space-y-1">
             <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
               <ShieldCheck className="w-4 h-4" />
-              <span>PCI-DSS Level 1 Verified</span>
+              <span>Manual Payment Verification</span>
             </div>
             <p className="text-[10px] text-slate-400">
-              Zero card numbers stored on our servers.
+              Payment receipts are reviewed before orders are confirmed.
             </p>
           </div>
         </div>
