@@ -27,6 +27,7 @@ import { AuthPanel } from '../components/AuthPanel';
 
 export const AccountView: React.FC = () => {
   const { accountInitialTab, navigateTo } = useNavigation();
+  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
   const {
     orders,
     bnplApplications,
@@ -99,12 +100,14 @@ export const AccountView: React.FC = () => {
 
         <div className="flex items-center gap-2 self-stretch sm:self-auto">
           <button onClick={() => signOutUser().then(() => showToast('You have signed out.')).catch(() => showToast('Could not sign out.', 'error'))} className="px-3 py-1.5 rounded-lg bg-white/10 text-white font-bold text-xs">Sign Out</button>
-          <button
-            onClick={() => navigateTo('admin')}
-            className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
-          >
-            Admin Switch
-          </button>
+          {adminEmail && currentUser.email?.trim().toLowerCase() === adminEmail && (
+            <button
+              onClick={() => navigateTo('admin')}
+              className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
+            >
+              Admin Dashboard
+            </button>
+          )}
         </div>
       </div>
 
