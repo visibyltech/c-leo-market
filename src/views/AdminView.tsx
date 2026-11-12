@@ -23,6 +23,7 @@ import { useNavigation } from '../context/NavigationContext';
 import { formatNaira } from '../services/store';
 import { CATEGORIES } from '../data/categories';
 import { CategorySlug, Order, Product } from '../types';
+import { uploadToCloudinary } from '../services/cloudinary';
 
 export const AdminView: React.FC = () => {
   const { navigateTo } = useNavigation();
@@ -57,6 +58,9 @@ export const AdminView: React.FC = () => {
   const [formStock, setFormStock] = useState('10');
   const [formPssDaily, setFormPssDaily] = useState('1000');
   const [formImage, setFormImage] = useState('/src/assets/images/hero_electronics_showcase_1794477527090.jpg');
+  const [formImageFile, setFormImageFile] = useState<File | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const [productFormError, setProductFormError] = useState('');
   const [formDescription, setFormDescription] = useState('High-performance electronics with factory warranty.');
 
   // Analytics Computations
@@ -67,8 +71,12 @@ export const AdminView: React.FC = () => {
   const pendingOrdersCount = orders.filter((o) => o.status === 'pending' || o.status === 'processing').length;
   const pendingBnplCount = bnplApplications.filter((b) => b.status === 'pending_review').length;
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSavingProduct(true);
+    setProductFormError('');
+    try {
+    const imageUrl = formImageFile ? (await uploadToCloudinary(formImageFile, 'products')).url : formImage;
     const catObj = CATEGORIES.find((c) => c.slug === formCategory);
 
     const priceNum = Number(formPrice) || 0;
@@ -86,7 +94,7 @@ export const AdminView: React.FC = () => {
         discountPercent: discount,
         stockCount: Number(formStock) || 1,
         paySmallSmallDaily: Number(formPssDaily) || 1000,
-        image: formImage,
+        image: imageUrl,
         description: formDescription,
       });
     } else {
@@ -100,7 +108,7 @@ export const AdminView: React.FC = () => {
         discountPercent: discount,
         rating: 5.0,
         reviewCount: 1,
-        image: formImage,
+        image: imageUrl,
         inStock: true,
         stockCount: Number(formStock) || 10,
         isFeatured: true,
@@ -121,6 +129,11 @@ export const AdminView: React.FC = () => {
     setIsAddProductModalOpen(false);
     setEditingProductId(null);
     resetForm();
+    } catch (error) {
+      setProductFormError(error instanceof Error ? error.message : 'Could not save product.');
+    } finally {
+      setSavingProduct(false);
+    }
   };
 
   const startEditProduct = (prod: Product) => {
@@ -133,6 +146,7 @@ export const AdminView: React.FC = () => {
     setFormStock(prod.stockCount.toString());
     setFormPssDaily(prod.paySmallSmallDaily.toString());
     setFormImage(prod.image);
+    setFormImageFile(null);
     setFormDescription(prod.description);
     setIsAddProductModalOpen(true);
   };
@@ -146,6 +160,8 @@ export const AdminView: React.FC = () => {
     setFormStock('10');
     setFormPssDaily('1000');
     setFormDescription('');
+    setFormImageFile(null);
+    setProductFormError('');
   };
 
   if (authLoading) return <div className="mx-auto max-w-xl px-4 py-20 text-center text-sm text-slate-500">Checking administrator access…</div>;
@@ -703,14 +719,11 @@ export const AdminView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Product Image Path or URL *</label>
-                <input
-                  type="text"
-                  required
-                  value={formImage}
-                  onChange={(e) => setFormImage(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                />
+                <label className="block font-semibold text-slate-700 mb-1">Product Image *</label>
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFormImageFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                <p className="mt-1 text-xs text-slate-500">Upload a JPG, PNG or WEBP image (maximum 8MB). Leave empty to keep the current image.</p>
+                {formImage && <img src={formImage} alt="Current product" className="mt-2 h-20 w-20 rounded-lg object-cover" />}
+                {productFormError && <p className="mt-2 text-xs text-rose-600">{productFormError}</p>}
               </div>
 
               <div>
