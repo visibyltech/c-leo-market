@@ -14,6 +14,11 @@ import {
   ExternalLink,
   Edit2,
   Save,
+  Menu,
+  X,
+  LayoutDashboard,
+  LogOut,
+  LifeBuoy,
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
 import { useNavigation } from '../context/NavigationContext';
@@ -33,9 +38,29 @@ export const AccountView: React.FC = () => {
     currentUser, authLoading, signOutUser,
   } = useShop();
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'bnpl' | 'saved' | 'profile' | 'notifications'>(
-    accountInitialTab || 'orders'
-  );
+  const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'bnpl' | 'profile' | 'notifications'>(accountInitialTab || 'overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const selectTab = (tab: typeof activeTab) => { setActiveTab(tab); setMobileMenuOpen(false); };
+  const menuItems = [
+    { id: 'overview' as const, label: 'Dashboard Overview', icon: LayoutDashboard },
+    { id: 'orders' as const, label: 'My Orders & Tracking', icon: Package, count: orders.length },
+    { id: 'bnpl' as const, label: 'BNPL Installments', icon: CreditCard, count: bnplApplications.length },
+    { id: 'profile' as const, label: 'My Profile & Address', icon: User },
+    { id: 'notifications' as const, label: 'Notifications', icon: Bell, count: notifications.filter((item) => !item.read).length },
+  ];
+  const renderMenuItems = () => <>
+    {menuItems.map((item) => {
+      const Icon = item.icon;
+      const selected = activeTab === item.id;
+      return <button key={item.id} onClick={() => selectTab(item.id)} className={'mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-xs font-bold transition-colors ' + (selected ? 'bg-blue-50 text-[#0B4FD8]' : 'text-slate-600 hover:bg-slate-50')}>
+        <Icon className="h-4 w-4 shrink-0" /><span className="flex-1">{item.label}</span>
+        {item.count !== undefined && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px]">{item.count}</span>}
+      </button>;
+    })}
+    <a href="https://shop.cleomarkets.com/" target="_blank" rel="noopener noreferrer" className="mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50"><CreditCard className="h-4 w-4" /><span className="flex-1">Pay Small Small Portal</span><ExternalLink className="h-3.5 w-3.5" /></a>
+    <a href="mailto:support@cleomarkets.com" className="mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-bold text-slate-600 hover:bg-slate-50"><LifeBuoy className="h-4 w-4" />Help & Support</a>
+    <button onClick={() => signOutUser().then(() => showToast('You have signed out.')).catch(() => showToast('Could not sign out.', 'error'))} className="mt-2 flex w-full items-center gap-3 rounded-xl border-t border-slate-100 px-3 py-3 text-left text-xs font-bold text-rose-600 hover:bg-rose-50"><LogOut className="h-4 w-4" />Logout</button>
+  </>;
 
   // Profile Edit State
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -83,57 +108,33 @@ export const AccountView: React.FC = () => {
         </div>
       </div>
 
-      {/* Account Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto no-scrollbar mb-6">
-        <button
-          onClick={() => setActiveTab('orders')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
-            activeTab === 'orders'
-              ? 'border-[#0B4FD8] text-[#0B4FD8]'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Package className="w-4 h-4" />
-          <span>My Orders ({orders.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('bnpl')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
-            activeTab === 'bnpl'
-              ? 'border-[#0B4FD8] text-[#0B4FD8]'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <CreditCard className="w-4 h-4" />
-          <span>BNPL Installments ({bnplApplications.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('profile')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
-            activeTab === 'profile'
-              ? 'border-[#0B4FD8] text-[#0B4FD8]'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <User className="w-4 h-4" />
-          <span>Profile & Address</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('notifications')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-all cursor-pointer ${
-            activeTab === 'notifications'
-              ? 'border-[#0B4FD8] text-[#0B4FD8]'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Bell className="w-4 h-4" />
-          <span>Notifications ({notifications.length})</span>
-        </button>
+      <div className="mb-4 flex items-center justify-between md:hidden">
+        <div><p className="text-xs text-slate-500">Customer account</p><h2 className="font-extrabold text-slate-900">My Dashboard</h2></div>
+        <button onClick={() => setMobileMenuOpen(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm"><Menu className="h-4 w-4" /> Menu</button>
       </div>
-
+      {mobileMenuOpen && <div className="fixed inset-0 z-[70] md:hidden">
+        <button aria-label="Close menu backdrop" onClick={() => setMobileMenuOpen(false)} className="absolute inset-0 bg-slate-950/50" />
+        <aside className="absolute left-0 top-0 bottom-0 w-[min(84vw,320px)] overflow-y-auto bg-white p-4 shadow-2xl">
+          <div className="mb-5 flex items-center justify-between"><span className="font-extrabold text-slate-900">Account Menu</span><button onClick={() => setMobileMenuOpen(false)} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Close menu"><X className="h-5 w-5" /></button></div>
+          {renderMenuItems()}
+        </aside>
+      </div>}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[250px_minmax(0,1fr)]">
+        <aside className="hidden md:block"><div className="sticky top-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 bg-slate-50 px-4 py-4"><p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Customer Menu</p><p className="mt-1 truncate text-sm font-extrabold text-slate-900">{customer.fullName || currentUser.email}</p></div>
+          <div className="p-2">{renderMenuItems()}</div>
+        </div></aside>
+        <section className="min-w-0">
+          {activeTab === 'overview' && <div className="mb-5">
+            <h2 className="mb-1 text-lg font-extrabold text-slate-900">Welcome back, {customer.fullName?.split(' ')[0] || 'Customer'}!</h2>
+            <p className="mb-4 text-xs text-slate-500">Manage your purchases, payments and account details from here.</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <button onClick={() => selectTab('orders')} className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-blue-300"><Package className="mb-2 h-5 w-5 text-blue-600" /><p className="text-2xl font-black text-slate-900">{orders.length}</p><p className="text-xs text-slate-500">Orders</p></button>
+              <button onClick={() => selectTab('bnpl')} className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-blue-300"><CreditCard className="mb-2 h-5 w-5 text-emerald-600" /><p className="text-2xl font-black text-slate-900">{bnplApplications.length}</p><p className="text-xs text-slate-500">BNPL applications</p></button>
+              <button onClick={() => selectTab('notifications')} className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-blue-300"><Bell className="mb-2 h-5 w-5 text-amber-600" /><p className="text-2xl font-black text-slate-900">{notifications.filter((item) => !item.read).length}</p><p className="text-xs text-slate-500">Unread alerts</p></button>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2"><button onClick={() => selectTab('profile')} className="rounded-lg bg-[#0B4FD8] px-4 py-2 text-xs font-bold text-white">Update profile</button><a href="https://shop.cleomarkets.com/" target="_blank" rel="noopener noreferrer" className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700">Pay Small Small portal ↗</a></div>
+          </div>}
       {/* Tab 1: Orders History & Live Tracking */}
       {activeTab === 'orders' && (
         <div className="space-y-4">
@@ -474,6 +475,8 @@ export const AccountView: React.FC = () => {
           ))}
         </div>
       )}
+        </section>
+      </div>
     </div>
   );
 };
