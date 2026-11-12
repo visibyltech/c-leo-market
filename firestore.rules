@@ -18,7 +18,8 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && !request.resource.data.keys().hasAny(['bvn','nin','bvnOrNin','password','role','isAdmin']);
       allow read: if isOwner(userId) || isAdmin();
-      allow update: if isOwner(userId)
+      allow update: if request.auth != null
+        && request.auth.uid == userId
         && request.resource.data.uid == resource.data.uid
         && !request.resource.data.diff(resource.data).affectedKeys()
           .hasAny(['uid','role','isAdmin','bvn','nin','bvnOrNin','email']);
