@@ -84,7 +84,7 @@ export const AdminView: React.FC = () => {
     const discount = origPriceNum > priceNum ? Math.round(((origPriceNum - priceNum) / origPriceNum) * 100) : 0;
 
     if (editingProductId) {
-      updateProduct(editingProductId, {
+      await updateProduct(editingProductId, {
         name: formName,
         brand: formBrand,
         category: formCategory,
@@ -98,7 +98,7 @@ export const AdminView: React.FC = () => {
         description: formDescription,
       });
     } else {
-      addProduct({
+      await addProduct({
         name: formName,
         brand: formBrand,
         category: formCategory,
