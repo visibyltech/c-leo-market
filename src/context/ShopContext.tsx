@@ -331,6 +331,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <ShopContext.Provider
       value={{
+        currentUser, authLoading, signUp, signIn, signOutUser,
         products,
         addProduct,
         updateProduct,
