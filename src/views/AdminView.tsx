@@ -26,6 +26,9 @@ import { CategorySlug, Order, Product } from '../types';
 
 export const AdminView: React.FC = () => {
   const { navigateTo } = useNavigation();
+  const { currentUser, authLoading } = useShop();
+  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
+  const isAdmin = !!adminEmail && currentUser?.email?.trim().toLowerCase() === adminEmail;
   const {
     products,
     addProduct,
@@ -38,11 +41,6 @@ export const AdminView: React.FC = () => {
     updateBNPLStatus,
     customer,
   } = useShop();
-
-  // Authentication barrier
-  const [isAuthenticated, setIsAuthenticated] = useState(true); // Default accessible in demo, but with secure PIN barrier toggle
-  const [adminPin, setAdminPin] = useState('');
-  const [authError, setAuthError] = useState('');
 
   // Active Admin Tab
   const [activeTab, setActiveTab] = useState<'analytics' | 'products' | 'orders' | 'bnpl' | 'payments'>('analytics');
@@ -68,16 +66,6 @@ export const AdminView: React.FC = () => {
 
   const pendingOrdersCount = orders.filter((o) => o.status === 'pending' || o.status === 'processing').length;
   const pendingBnplCount = bnplApplications.filter((b) => b.status === 'pending_review').length;
-
-  const handlePinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (adminPin === '2026' || adminPin === 'admin' || adminPin === 'PSS') {
-      setIsAuthenticated(true);
-      setAuthError('');
-    } else {
-      setAuthError('Invalid Admin Passcode. Default passcode is 2026.');
-    }
-  };
 
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,40 +148,8 @@ export const AdminView: React.FC = () => {
     setFormDescription('');
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-xl p-6 text-center space-y-4">
-          <div className="w-12 h-12 bg-blue-50 text-[#0B4FD8] rounded-full flex items-center justify-center mx-auto">
-            <Lock className="w-6 h-6" />
-          </div>
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900">PSS Executive Portal</h2>
-            <p className="text-xs text-slate-500 mt-1">Enter your secure administrator access code.</p>
-          </div>
-          <form onSubmit={handlePinSubmit} className="space-y-3">
-            <input
-              type="password"
-              placeholder="Enter PIN (e.g. 2026)"
-              value={adminPin}
-              onChange={(e) => setAdminPin(e.target.value)}
-              className="w-full px-4 py-2.5 text-center text-sm font-mono tracking-widest bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-[#0B4FD8]"
-            />
-            {authError && <p className="text-xs text-rose-600 font-medium">{authError}</p>}
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-[#0B4FD8] hover:bg-[#002B7F] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-            >
-              Unlock Dashboard
-            </button>
-          </form>
-          <div className="pt-2 text-[11px] text-slate-400">
-            Default Demo PIN: <strong className="text-slate-700">2026</strong>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (authLoading) return <div className="mx-auto max-w-xl px-4 py-20 text-center text-sm text-slate-500">Checking administrator access…</div>;
+  if (!isAdmin) return <div className="mx-auto max-w-xl px-4 py-20 text-center"><ShieldAlert className="mx-auto mb-3 h-10 w-10 text-rose-500" /><h1 className="text-xl font-extrabold text-slate-900">Administrator access only</h1><p className="mt-2 text-sm text-slate-600">Sign in with the authorized C-LEO Market administrator email to access this area.</p><button onClick={() => navigateTo('account')} className="mt-5 rounded-xl bg-[#0B4FD8] px-5 py-3 text-sm font-bold text-white">Go to Account / Sign In</button></div>;
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 pb-24 md:pb-12">
