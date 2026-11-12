@@ -211,7 +211,7 @@ export const AdminView: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-blue-200">
-              Orders, Paystack Transactions, Inventory & BNPL Risk Approvals
+              Orders, Bank Transfer Reviews, Inventory & BNPL Risk Approvals
             </p>
           </div>
         </div>
@@ -295,7 +295,7 @@ export const AdminView: React.FC = () => {
           }`}
         >
           <DollarSign className="w-4 h-4" />
-          <span>Paystack Gateway Logs</span>
+          <span>Bank Transfer Records</span>
         </button>
       </div>
 
@@ -530,14 +530,15 @@ export const AdminView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between text-xs pt-1">
-                  <div className="space-x-4">
-                    <span>
-                      Items: <strong>{ord.items.map((i) => `${i.product.name} (x${i.quantity})`).join(', ')}</strong>
-                    </span>
+                <div className="flex flex-wrap items-center justify-between text-xs pt-1 gap-3">
+                  <div className="space-y-1">
+                    <div>Items: <strong>{ord.items.map((i) => `${i.product.name} (x${i.quantity})`).join(', ')}</strong></div>
+                    <div className="text-slate-600">Payment: <strong className="capitalize">{ord.paymentMethod}</strong> · <strong className="capitalize">{ord.paymentStatus}</strong></div>
+                    {ord.receiptFileName && <div className="text-slate-600">Receipt selected: {ord.receiptFileName} <span className="text-amber-700">(file upload awaits cloud storage setup)</span></div>}
                   </div>
-                  <div className="font-black text-slate-950 text-sm tabular-nums">
-                    Total: {formatNaira(ord.total)}
+                  <div className="flex items-center gap-3">
+                    <div className="font-black text-slate-950 text-sm tabular-nums">Total: {formatNaira(ord.total)}</div>
+                    {ord.paymentStatus === 'pending' && <button onClick={() => updatePaymentStatus(ord.id, 'verified')} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">Approve payment</button>}
                   </div>
                 </div>
               </div>
@@ -608,11 +609,11 @@ export const AdminView: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 5: Paystack Gateway Logs */}
+      {/* Tab 5: Bank Transfer Records */}
       {activeTab === 'payments' && (
         <div className="space-y-4">
           <h3 className="text-sm font-extrabold text-slate-900">
-            Paystack Verified Transaction Logs
+            Bank Transfer Payment Records
           </h3>
 
           <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">

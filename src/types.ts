@@ -68,10 +68,11 @@ export interface Order {
   discountAmount: number;
   total: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  paymentMethod: 'paystack' | 'bnpl' | 'transfer';
+  paymentMethod: 'bnpl' | 'transfer';
   paymentReference: string;
   paymentStatus: 'verified' | 'pending' | 'failed';
   trackingNumber: string;
+  receiptFileName?: string;
 }
 
 export interface BNPLApplication {
