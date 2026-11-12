@@ -21,7 +21,6 @@ import { formatNaira } from '../services/store';
 import { ProductCard } from '../components/ProductCard';
 import { CheckoutModal } from '../components/modals/CheckoutModal';
 import { BNPLModal } from '../components/modals/BNPLModal';
-import { PaySmallSmallModal } from '../components/modals/PaySmallSmallModal';
 import { ProductReview } from '../types';
 
 export const ProductDetailsView: React.FC = () => {
@@ -34,7 +33,6 @@ export const ProductDetailsView: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState(product?.image || '');
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isBNPLOpen, setIsBNPLOpen] = useState(false);
-  const [isPSSOpen, setIsPSSOpen] = useState(false);
 
   // Reviews state
   const [reviews, setReviews] = useState<ProductReview[]>([
@@ -256,44 +254,37 @@ export const ProductDetailsView: React.FC = () => {
               <span className="text-xs text-slate-400">Total: {formatNaira(product.price * quantity)}</span>
             </div>
 
-            {/* THE FOUR MANDATORY SHOPPING ACTIONS */}
+            {/* Primary shopping actions: two side-by-side, Pay Small Small below */}
             <div className="space-y-2.5 pt-2">
-              {/* Action A: BUY AND PAY NOW */}
-              <button
-                onClick={() => setIsCheckoutOpen(true)}
-                className="w-full py-3.5 px-6 bg-[#0B4FD8] hover:bg-[#002B7F] active:scale-98 text-white font-extrabold text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>BUY AND PAY NOW ({formatNaira(product.price * quantity)})</span>
-              </button>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {/* Action B: BUY NOW, PAY LATER */}
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
-                  onClick={() => setIsBNPLOpen(true)}
-                  className="py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={() => addToCart(product, quantity)}
+                  className="min-w-0 py-3 px-2 sm:px-4 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs sm:text-sm rounded-xl border border-slate-300 shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Zap className="w-4 h-4 text-amber-400" />
-                  <span>BUY NOW, PAY LATER</span>
+                  <ShoppingCart className="w-4 h-4 shrink-0 text-[#0B4FD8]" />
+                  <span>ADD TO CART</span>
                 </button>
-
-                {/* Action C: PAY SMALL SMALL (Preserving product context & link to shop.cleomarkets.com) */}
                 <button
-                  onClick={() => setIsPSSOpen(true)}
-                  className="py-3 px-4 bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={() => setIsCheckoutOpen(true)}
+                  className="min-w-0 py-3 px-2 sm:px-4 bg-[#0B4FD8] hover:bg-[#002B7F] active:scale-98 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 text-slate-950" />
-                  <span>PAY SMALL SMALL</span>
+                  <CreditCard className="w-4 h-4 shrink-0" />
+                  <span>BUY AND PAY NOW</span>
                 </button>
               </div>
-
-              {/* Action D: ADD TO CART */}
               <button
-                onClick={() => addToCart(product, quantity)}
-                className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => window.location.assign('https://shop.cleomarkets.com')}
+                className="w-full py-3 px-4 bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <ShoppingCart className="w-4 h-4 text-[#0B4FD8]" />
-                <span>ADD TO CART</span>
+                <Sparkles className="w-4 h-4" />
+                <span>PAY SMALL SMALL</span>
+              </button>
+              <button
+                onClick={() => setIsBNPLOpen(true)}
+                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span>BUY NOW, PAY LATER</span>
               </button>
             </div>
 
