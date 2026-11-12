@@ -73,6 +73,7 @@ export interface Order {
   paymentStatus: 'verified' | 'pending' | 'failed';
   trackingNumber: string;
   receiptFileName?: string;
+  receiptPath?: string;
 }
 
 export interface BNPLApplication {

@@ -27,6 +27,7 @@ import { AuthPanel } from '../components/AuthPanel';
 
 export const AccountView: React.FC = () => {
   const { accountInitialTab, navigateTo } = useNavigation();
+  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
   const {
     orders,
     bnplApplications,
@@ -73,9 +74,8 @@ export const AccountView: React.FC = () => {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    updateCustomer({ fullName: name, email, phone, address, city, state });
+    updateCustomer({ fullName: name, phone, address, city, state });
     setIsEditingProfile(false);
-    showToast('Profile information updated');
   };
 
   if (authLoading) return <div className="py-16 text-center text-sm text-slate-500">Loading your account…</div>;
@@ -99,12 +99,14 @@ export const AccountView: React.FC = () => {
 
         <div className="flex items-center gap-2 self-stretch sm:self-auto">
           <button onClick={() => signOutUser().then(() => showToast('You have signed out.')).catch(() => showToast('Could not sign out.', 'error'))} className="px-3 py-1.5 rounded-lg bg-white/10 text-white font-bold text-xs">Sign Out</button>
-          <button
-            onClick={() => navigateTo('admin')}
-            className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
-          >
-            Admin Switch
-          </button>
+          {adminEmail && currentUser.email?.trim().toLowerCase() === adminEmail && (
+            <button
+              onClick={() => navigateTo('admin')}
+              className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
+            >
+              Admin Dashboard
+            </button>
+          )}
         </div>
       </div>
 
@@ -381,9 +383,8 @@ export const AccountView: React.FC = () => {
                 <label className="block text-slate-600 font-semibold mb-1">Email Address</label>
                 <input
                   type="email"
-                  disabled={!isEditingProfile}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  disabled
+                  value={currentUser.email || email}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 disabled:opacity-75 focus:outline-none focus:border-[#0B4FD8]"
                 />
               </div>

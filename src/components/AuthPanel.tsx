@@ -17,7 +17,7 @@ export const AuthPanel: React.FC<{ onComplete?: () => void; compact?: boolean }>
     try {
       if (mode === 'signup') await signUp(email, password, name);
       else await signIn(email, password);
-      showToast(mode === 'signup' ? 'Your account has been created.' : 'Welcome back.');
+      showToast(mode === 'signup' ? 'Account created. Check your email to verify it before placing an order.' : 'Welcome back.');
       onComplete?.();
     } catch (err: any) {
       const messages: Record<string, string> = {

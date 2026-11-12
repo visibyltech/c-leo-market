@@ -146,7 +146,7 @@ export const PolicyView: React.FC = () => {
                 Are payments secured on this platform?
               </h3>
               <p className="text-slate-600 text-[11px]">
-                Yes, 100%. All online payments are handled directly by Paystack, a certified PCI-DSS Level 1 payment gateway. We support Mastercard, Visa, Verve cards, instant bank transfers, and USSD. C-LEO Market Service never stores your raw card details.
+                Customers pay by bank transfer using the account details shown at checkout. Uploading a receipt does not confirm payment; our team checks the transfer and updates the order after verification.
               </p>
             </div>
           </div>
