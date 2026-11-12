@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigation } from '../context/NavigationContext';
 import { ArrowRight, Sparkles, Shield, Zap, CreditCard } from 'lucide-react';
 import { CategorySlug } from '../types';
+import heroElectronics from '../assets/images/hero_electronics_showcase_1794477527090.jpg';
+import heroAppliances from '../assets/images/hero_appliances_home_1794477528247.jpg';
+import showcaseSolar from '../assets/images/showcase_solar_power_1794477529448.jpg';
+import showcaseSmartphones from '../assets/images/showcase_smartphones_1794477530243.jpg';
 
 interface Slide {
   id: number;
@@ -23,7 +27,7 @@ const SLIDES: Slide[] = [
     subtext: 'Get 4K Smart TVs, laptops and luxury electronics from only ₦1,000 daily with zero stress.',
     ctaText: 'Shop Electronics',
     categoryTarget: 'televisions',
-    image: '/src/assets/images/hero_electronics_showcase_1794477527090.jpg',
+    image: heroElectronics,
     badge: 'PSS from ₦1,000/day',
     accentColor: 'from-blue-900/90 via-blue-950/70',
   },
@@ -34,7 +38,7 @@ const SLIDES: Slide[] = [
     subtext: 'Hisense washing machines, LG inverter freezers & digital air fryers with nationwide warranty.',
     ctaText: 'Explore Appliances',
     categoryTarget: 'home-appliances',
-    image: '/src/assets/images/hero_appliances_home_1794477528247.jpg',
+    image: heroAppliances,
     badge: 'Up to 20% Off',
     accentColor: 'from-slate-900/90 via-slate-950/70',
   },
@@ -45,7 +49,7 @@ const SLIDES: Slide[] = [
     subtext: 'Felicity hybrid inverters, Sun King lighting and lithium storage for 24/7 uninterrupted power.',
     ctaText: 'View Solar Systems',
     categoryTarget: 'power-solar',
-    image: '/src/assets/images/showcase_solar_power_1794477529448.jpg',
+    image: showcaseSolar,
     badge: 'Financing Available',
     accentColor: 'from-amber-950/90 via-slate-950/70',
   },
@@ -56,7 +60,7 @@ const SLIDES: Slide[] = [
     subtext: 'TECNO Camon 50 Pro, Infinix Note 40 and Samsung flagships with fast doorstep delivery.',
     ctaText: 'Shop Smartphones',
     categoryTarget: 'smartphones',
-    image: '/src/assets/images/showcase_smartphones_1794477530243.jpg',
+    image: showcaseSmartphones,
     badge: '100% Genuine Tech',
     accentColor: 'from-blue-950/90 via-slate-950/70',
   },
@@ -183,8 +187,8 @@ export const HeroBanner: React.FC = () => {
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-900 leading-tight">Paystack Secured</p>
-            <p className="text-[10px] text-slate-500">Cards, Transfer & USSD</p>
+            <p className="text-xs font-bold text-slate-900 leading-tight">Secure Payments</p>
+            <p className="text-[10px] text-slate-500">Convenient payment options</p>
           </div>
         </div>
       </div>
