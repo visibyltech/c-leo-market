@@ -4,8 +4,10 @@ service cloud.firestore {
     function signedIn() {
       return request.auth != null && request.auth.token.email_verified == true;
     }
+    // Admin access is tied to the exact administrator email.
+    // Customers still need verified email through signedIn().
     function isAdmin() {
-      return signedIn()
+      return request.auth != null
         && request.auth.token.email == 'tvplugng@gmail.com';
     }
     function isOwner(userId) {
