@@ -2,16 +2,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
-      return request.auth != null && request.auth.token.email_verified == true;
+      return request.auth != null;
     }
-    // Admin access is tied to the exact administrator email.
-    // Customers still need verified email through signedIn().
+    function verifiedUser() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+    // Admin access is tied to the exact administrator email and does not
+    // depend on the email_verified claim.
     function isAdmin() {
-      return request.auth != null
+      return signedIn()
         && request.auth.token.email == 'tvplugng@gmail.com';
     }
     function isOwner(userId) {
-      return signedIn() && request.auth.uid == userId;
+      return verifiedUser() && request.auth.uid == userId;
     }
 
     match /customers/{userId} {
