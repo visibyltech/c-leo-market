@@ -81,6 +81,7 @@ export const AdminView: React.FC = () => {
     let imported = 0;
     let skipped = 0;
     let failed = 0;
+    let firstFailure = '';
     try {
       const response = await fetch('/api/catalogue');
       const payload = await response.json();
@@ -99,12 +100,18 @@ export const AdminView: React.FC = () => {
         }
         try {
           setImportProgress(`Importing ${index + 1} of ${sourceProducts.length}: ${name}`);
-          const sourceImages = (source.images || []).slice(0, 4).map((item: any) => String(item.src || '')).filter(Boolean);
+          const sourceImages = (source.images || []).slice(0, 5).map((item: any) => String(item.src || '')).filter(Boolean);
           const uploadedImages: string[] = [];
           for (const sourceImage of sourceImages) {
-            const uploaded = await uploadRemoteImageToCloudinary(sourceImage);
-            uploadedImages.push(uploaded.url);
+            try {
+              const uploaded = await uploadRemoteImageToCloudinary(sourceImage);
+              uploadedImages.push(uploaded.url);
+            } catch (imageError) {
+              console.warn('One catalogue image could not be copied:', imageError);
+              if (!firstFailure) firstFailure = imageError instanceof Error ? imageError.message : 'A catalogue image could not be copied.';
+            }
           }
+          if (!uploadedImages.length) throw new Error(firstFailure || 'No product photos could be copied from the old catalogue.');
           const minorUnit = Number(source.prices?.currency_minor_unit ?? 2);
           const divisor = Math.pow(10, minorUnit);
           const price = Number(source.prices?.price || 0) / divisor;
@@ -156,10 +163,11 @@ export const AdminView: React.FC = () => {
           imported += 1;
         } catch (itemError) {
           console.error('Catalogue item import failed:', name, itemError);
+          if (!firstFailure) firstFailure = itemError instanceof Error ? itemError.message : 'Product import failed.';
           failed += 1;
         }
       }
-      setImportSummary(`Import finished: ${imported} added, ${skipped} already present or incomplete, ${failed} failed. Images copied to Cloudinary; product records saved to Firebase.`);
+      setImportSummary(`Import finished: ${imported} added, ${skipped} already present or incomplete, ${failed} failed. ${firstFailure ? 'First issue: ' + firstFailure : 'Product photos copied to Cloudinary and products saved to Firebase.'}`);
     } catch (error) {
       setImportSummary(error instanceof Error ? error.message : 'Catalogue import failed.');
     } finally {
