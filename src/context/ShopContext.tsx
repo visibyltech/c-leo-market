@@ -158,10 +158,20 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addProduct = async (newProd: Omit<Product, 'id'>): Promise<Product> => {
-    if (currentUser?.email?.trim().toLowerCase() !== 'tvplugng@gmail.com') throw new Error('Administrator access required.');
+    if (currentUser?.email?.trim().toLowerCase() !== 'tvplugng@gmail.com') throw new Error('Administrator access required. Please sign in with the authorised admin email.');
+    // Refresh the Firebase ID token before a privileged write so Firestore
+    // evaluates the latest authenticated email and verification claims.
+    await currentUser.getIdToken(true);
     const id = doc(collection(firestoreDb, 'products')).id;
     const product: Product = { ...newProd, id };
-    await setDoc(doc(firestoreDb, 'products', id), product);
+    try {
+      await setDoc(doc(firestoreDb, 'products', id), product);
+    } catch (error: any) {
+      if (error?.code === 'permission-denied' || /insufficient permissions/i.test(error?.message || '')) {
+        throw new Error('Firebase is still rejecting admin product writes. The live Firestore Rules for project c-leo-market must include admin access for tvplugng@gmail.com on /products/{productId}.');
+      }
+      throw error;
+    }
     showToast('Product added to the live catalogue.');
     return product;
   };
