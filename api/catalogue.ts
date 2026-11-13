@@ -65,6 +65,7 @@ export default async function handler(req: any, res: any) {
     const page = await fetch(base + '/shop/', { headers: { Accept: 'text/html', 'User-Agent': 'Mozilla/5.0 CLeoMarketImporter/2.0' } });
     if (!page.ok) throw new Error('Could not open the existing shop page (HTTP ' + page.status + ').');
     const html = await page.text();
+    if (req.query?.debug === '1') return res.status(200).json({ htmlStart: html.slice(0, 18000), productClasses: [...html.matchAll(/class=["'][^"']*product[^"']*["']/gi)].slice(0, 30).map(m => m[0]) });
     const products = scrapeProducts(html);
     if (!products.length) throw new Error('The old shop page opened, but its product cards could not be read. The source site may have changed its layout.');
     return res.status(200).json({ source: 'shop.cleomarkets.com/shop', count: products.length, products });
