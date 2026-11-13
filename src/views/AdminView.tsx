@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -58,8 +58,14 @@ export const AdminView: React.FC = () => {
   const [formOriginalPrice, setFormOriginalPrice] = useState('180000');
   const [formStock, setFormStock] = useState('10');
   const [formPssDaily, setFormPssDaily] = useState('1000');
-  const [formImage, setFormImage] = useState('/src/assets/images/hero_electronics_showcase_1794477527090.jpg');
-  const [formImageFile, setFormImageFile] = useState<File | null>(null);
+  const [formExistingImages, setFormExistingImages] = useState<string[]>([]);
+  const [formImageFiles, setFormImageFiles] = useState<File[]>([]);
+  const [formImagePreviews, setFormImagePreviews] = useState<string[]>([]);
+  useEffect(() => {
+    const urls = formImageFiles.map((file) => URL.createObjectURL(file));
+    setFormImagePreviews(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [formImageFiles]);
   const [savingProduct, setSavingProduct] = useState(false);
   const [productFormError, setProductFormError] = useState('');
   const [importingCatalogue, setImportingCatalogue] = useState(false);
@@ -175,7 +181,13 @@ export const AdminView: React.FC = () => {
     setSavingProduct(true);
     setProductFormError('');
     try {
-    const imageUrl = formImageFile ? (await uploadToCloudinary(formImageFile, 'products')).url : formImage;
+    const uploadedImages: string[] = [];
+    for (const file of formImageFiles) {
+      uploadedImages.push((await uploadToCloudinary(file, 'products')).url);
+    }
+    const finalImages = [...formExistingImages, ...uploadedImages].slice(0, 5);
+    if (!finalImages.length) throw new Error('Please upload at least one product photo.');
+    const imageUrl = finalImages[0];
     const catObj = CATEGORIES.find((c) => c.slug === formCategory);
 
     const priceNum = Number(formPrice) || 0;
@@ -194,6 +206,7 @@ export const AdminView: React.FC = () => {
         stockCount: Number(formStock) || 1,
         paySmallSmallDaily: Number(formPssDaily) || 1000,
         image: imageUrl,
+        additionalImages: finalImages.slice(1),
         description: formDescription,
       });
     } else {
@@ -208,6 +221,7 @@ export const AdminView: React.FC = () => {
         rating: 5.0,
         reviewCount: 1,
         image: imageUrl,
+        additionalImages: finalImages.slice(1),
         inStock: true,
         stockCount: Number(formStock) || 10,
         isFeatured: true,
@@ -244,8 +258,8 @@ export const AdminView: React.FC = () => {
     setFormOriginalPrice((prod.originalPrice || prod.price).toString());
     setFormStock(prod.stockCount.toString());
     setFormPssDaily(prod.paySmallSmallDaily.toString());
-    setFormImage(prod.image);
-    setFormImageFile(null);
+    setFormExistingImages([prod.image, ...(prod.additionalImages || [])].filter(Boolean).slice(0, 5));
+    setFormImageFiles([]);
     setFormDescription(prod.description);
     setIsAddProductModalOpen(true);
   };
@@ -259,7 +273,8 @@ export const AdminView: React.FC = () => {
     setFormStock('10');
     setFormPssDaily('1000');
     setFormDescription('');
-    setFormImageFile(null);
+    setFormExistingImages([]);
+    setFormImageFiles([]);
     setProductFormError('');
   };
 
@@ -827,10 +842,33 @@ export const AdminView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Product Image *</label>
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFormImageFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
-                <p className="mt-1 text-xs text-slate-500">Upload a JPG, PNG or WEBP image (maximum 8MB). Leave empty to keep the current image.</p>
-                {formImage && <img src={formImage} alt="Current product" className="mt-2 h-20 w-20 rounded-lg object-cover" />}
+                <label className="block font-semibold text-slate-700 mb-1">Product Photos * (up to 5)</label>
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.files || []);
+                    const remaining = Math.max(0, 5 - formExistingImages.length - formImageFiles.length);
+                    if (selected.length > remaining) setProductFormError('You can add up to five photos in total.');
+                    else setProductFormError('');
+                    setFormImageFiles((prev) => [...prev, ...selected.slice(0, remaining)]);
+                    e.currentTarget.value = '';
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                <p className="mt-1 text-xs text-slate-500">Choose up to five JPG, PNG or WEBP photos. Tap × on any preview to remove it before saving. Each photo must be 8MB or smaller.</p>
+                <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {formExistingImages.map((url, index) => (
+                    <div key={url + index} className="relative">
+                      <img src={url} alt={`Product photo ${index + 1}`} onError={(e) => { e.currentTarget.style.display = 'none'; }} className="h-20 w-full rounded-lg object-cover border border-slate-200 bg-slate-100" />
+                      <button type="button" onClick={() => setFormExistingImages((prev) => prev.filter((_, i) => i !== index))} className="absolute -right-1 -top-1 h-6 w-6 rounded-full bg-rose-600 text-white font-bold shadow" aria-label="Remove photo">×</button>
+                    </div>
+                  ))}
+                  {formImagePreviews.map((url, index) => (
+                    <div key={url} className="relative">
+                      <img src={url} alt={`New product photo ${index + 1}`} className="h-20 w-full rounded-lg object-cover border border-slate-200 bg-slate-100" />
+                      <button type="button" onClick={() => setFormImageFiles((prev) => prev.filter((_, i) => i !== index))} className="absolute -right-1 -top-1 h-6 w-6 rounded-full bg-rose-600 text-white font-bold shadow" aria-label="Remove photo">×</button>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">{formExistingImages.length + formImageFiles.length} of 5 photos selected</p>
                 {productFormError && <p className="mt-2 text-xs text-rose-600">{productFormError}</p>}
               </div>
 
@@ -854,9 +892,10 @@ export const AdminView: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#0B4FD8] hover:bg-[#002B7F] text-white font-bold rounded-lg cursor-pointer"
+                  disabled={savingProduct}
+                  className="px-5 py-2 bg-[#0B4FD8] hover:bg-[#002B7F] text-white font-bold rounded-lg cursor-pointer disabled:opacity-60"
                 >
-                  Save Product
+                  {savingProduct ? 'Uploading & Saving…' : 'Save Product'}
                 </button>
               </div>
             </form>
