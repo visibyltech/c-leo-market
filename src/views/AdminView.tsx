@@ -89,84 +89,97 @@ export const AdminView: React.FC = () => {
       const sourceProducts = Array.isArray(payload.products) ? payload.products : [];
       if (!sourceProducts.length) throw new Error('The old catalogue returned no products.');
       const existingLinks = new Set(products.map((p) => p.cleoShopUrl).filter(Boolean));
-      for (let index = 0; index < sourceProducts.length; index += 1) {
-        const source = sourceProducts[index];
-        const permalink = String(source.permalink || '');
-        const name = String(source.name || '').trim();
-        const imageSource = String(source.images?.[0]?.src || '');
-        if (!name || !permalink || !imageSource || existingLinks.has(permalink)) {
-          skipped += 1;
-          continue;
-        }
-        try {
-          setImportProgress(`Importing ${index + 1} of ${sourceProducts.length}: ${name}`);
-          const sourceImages = (source.images || []).slice(0, 5).map((item: any) => String(item.src || '')).filter(Boolean);
-          const uploadedImages: string[] = [];
-          for (const sourceImage of sourceImages) {
-            try {
-              const uploaded = await uploadRemoteImageToCloudinary(sourceImage);
-              uploadedImages.push(uploaded.url);
-            } catch (imageError) {
-              console.warn('One catalogue image could not be copied:', imageError);
-              if (!firstFailure) firstFailure = imageError instanceof Error ? imageError.message : 'A catalogue image could not be copied.';
-            }
+      let cursor = 0;
+      const importOne = async () => {
+        while (cursor < sourceProducts.length) {
+          const index = cursor++;
+          const source = sourceProducts[index];
+          const permalink = String(source.permalink || '');
+          const name = String(source.name || '').trim();
+          const imageSource = String(source.images?.[0]?.src || '');
+          if (!name || !permalink || !imageSource || existingLinks.has(permalink)) {
+            skipped += 1;
+            continue;
           }
-          if (!uploadedImages.length) throw new Error(firstFailure || 'No product photos could be copied from the old catalogue.');
-          const minorUnit = Number(source.prices?.currency_minor_unit ?? 2);
-          const divisor = Math.pow(10, minorUnit);
-          const price = Number(source.prices?.price || 0) / divisor;
-          const regularPrice = Number(source.prices?.regular_price || source.prices?.price || 0) / divisor;
-          if (!price || !Number.isFinite(price)) { failed += 1; continue; }
-          const categoryName = String(source.categories?.[0]?.name || 'Other Products');
-          const categoryText = categoryName.toLowerCase();
-          const category: CategorySlug =
-            /phone|mobile|smartphone/.test(categoryText) ? 'smartphones' :
-            /laptop|computer/.test(categoryText) ? 'laptops-computers' :
-            /tv|television/.test(categoryText) ? 'televisions' :
-            /kitchen|cook|blender|iron/.test(categoryText) ? 'kitchen-appliances' :
-            /solar|power|energy|inverter/.test(categoryText) ? 'power-solar' :
-            /audio|speaker|sound|headphone/.test(categoryText) ? 'audio-speakers' :
-            /furniture|chair|table/.test(categoryText) ? 'furniture' :
-            /camera|security/.test(categoryText) ? 'cameras-security' :
-            /watch|accessor/.test(categoryText) ? 'watches-accessories' :
-            /home|appliance|freezer|fridge|washing|air condition/.test(categoryText) ? 'home-appliances' :
-            /grocery|rice|combo/.test(categoryText) ? 'other-products' : 'electronics-gadgets';
-          const description = String(source.short_description || source.description || '')
-            .replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-          const dailyMatch = description.match(/₦\s*([\d,]+)\s*(?:per\s*)?day/i);
-          const dailyRate = dailyMatch ? Number(dailyMatch[1].replace(/,/g, '')) : 0;
-          const monthsMatch = description.match(/(\d+)\s*months?/i);
-          await addProduct({
-            name,
-            brand: name.split(/\s+/)[0] || 'C-LEO',
-            category,
-            categoryName,
-            price,
-            originalPrice: regularPrice > price ? regularPrice : price,
-            discountPercent: regularPrice > price ? Math.round(((regularPrice - price) / regularPrice) * 100) : 0,
-            rating: 5,
-            reviewCount: 0,
-            image: uploadedImages[0],
-            additionalImages: uploadedImages.slice(1),
-            inStock: source.is_in_stock !== false,
-            stockCount: source.is_in_stock === false ? 0 : 10,
-            isFeatured: false,
-            paySmallSmallDaily: dailyRate,
-            paySmallSmallDurationDays: monthsMatch ? Number(monthsMatch[1]) * 30 : 0,
-            cleoShopUrl: permalink,
-            description,
-            specifications: {},
-            warranty: 'As stated by C-LEO Market',
-            deliveryEstimate: 'As stated by C-LEO Market',
-          });
-          existingLinks.add(permalink);
-          imported += 1;
-        } catch (itemError) {
-          console.error('Catalogue item import failed:', name, itemError);
-          if (!firstFailure) firstFailure = itemError instanceof Error ? itemError.message : 'Product import failed.';
-          failed += 1;
+          try {
+            setImportProgress(`Importing ${index + 1} of ${sourceProducts.length}: ${name}`);
+            const sourceImages = (source.images || []).slice(0, 5).map((item: any) => String(item.src || '')).filter(Boolean);
+            const uploadedImages: string[] = [];
+            for (const sourceImage of sourceImages) {
+              try {
+                const uploaded = await uploadRemoteImageToCloudinary(sourceImage);
+                uploadedImages.push(uploaded.url);
+              } catch (imageError) {
+                console.warn('One catalogue image could not be copied:', imageError);
+                if (!firstFailure) firstFailure = imageError instanceof Error ? imageError.message : 'A catalogue image could not be copied.';
+              }
+            }
+            if (!uploadedImages.length) throw new Error(firstFailure || 'No product photos could be copied from the old catalogue.');
+            const minorUnit = Number(source.prices?.currency_minor_unit ?? 2);
+            const divisor = Math.pow(10, minorUnit);
+            const price = Number(source.prices?.price || 0) / divisor;
+            const regularPrice = Number(source.prices?.regular_price || source.prices?.price || 0) / divisor;
+            if (!price || !Number.isFinite(price)) { failed += 1; continue; }
+            const nameText = name.toLowerCase();
+            const categoryName =
+              /phone|mobile|smartphone|tecno|infinix|itel|samsung|iphone/.test(nameText) ? 'Phones & Accessories' :
+              /laptop|computer|hp elitebook|dell xps/.test(nameText) ? 'Laptops & Computers' :
+              /tv|television/.test(nameText) ? 'Televisions' :
+              /kitchen|cook|blender|iron|stove|air fryer|dispenser|freezer|fridge|washing machine|fan/.test(nameText) ? 'Home & Kitchen Appliances' :
+              /solar|power|energy|inverter|battery|generator/.test(nameText) ? 'Power & Solar' :
+              /audio|speaker|sound|headphone|earphone|earbud|jbl/.test(nameText) ? 'Audio & Accessories' :
+              /furniture|chair|table|dining/.test(nameText) ? 'Furniture' :
+              /camera|security/.test(nameText) ? 'Cameras & Security' :
+              /watch|accessor|glass/.test(nameText) ? 'Accessories' : 'Other Products';
+            const categoryText = categoryName.toLowerCase();
+            const category: CategorySlug =
+              /phone/.test(categoryText) ? 'smartphones' :
+              /laptop|computer/.test(categoryText) ? 'laptops-computers' :
+              /television/.test(categoryText) ? 'televisions' :
+              /kitchen|appliance/.test(categoryText) ? 'home-appliances' :
+              /solar|power/.test(categoryText) ? 'power-solar' :
+              /audio/.test(categoryText) ? 'audio-speakers' :
+              /furniture/.test(categoryText) ? 'furniture' :
+              /camera/.test(categoryText) ? 'cameras-security' :
+              /accessor/.test(categoryText) ? 'watches-accessories' : 'other-products';
+            const description = String(source.short_description || source.description || '')
+              .replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\\s+/g, ' ').trim();
+            const dailyMatch = description.match(/₦\\s*([\\d,]+)\\s*(?:per\\s*)?day/i);
+            const dailyRate = dailyMatch ? Number(dailyMatch[1].replace(/,/g, '')) : 0;
+            const monthsMatch = description.match(/(\\d+)\\s*months?/i);
+            await addProduct({
+              name,
+              brand: name.split(/\\s+/)[0] || 'C-LEO',
+              category,
+              categoryName,
+              price,
+              originalPrice: regularPrice > price ? regularPrice : price,
+              discountPercent: regularPrice > price ? Math.round(((regularPrice - price) / regularPrice) * 100) : 0,
+              rating: 5,
+              reviewCount: 0,
+              image: uploadedImages[0],
+              additionalImages: uploadedImages.slice(1),
+              inStock: source.is_in_stock !== false,
+              stockCount: source.is_in_stock === false ? 0 : 10,
+              isFeatured: false,
+              paySmallSmallDaily: dailyRate,
+              paySmallSmallDurationDays: monthsMatch ? Number(monthsMatch[1]) * 30 : 0,
+              cleoShopUrl: permalink,
+              description,
+              specifications: {},
+              warranty: 'As stated by C-LEO Market',
+              deliveryEstimate: 'As stated by C-LEO Market',
+            });
+            existingLinks.add(permalink);
+            imported += 1;
+          } catch (itemError) {
+            console.error('Catalogue item import failed:', name, itemError);
+            if (!firstFailure) firstFailure = itemError instanceof Error ? itemError.message : 'Product import failed.';
+            failed += 1;
+          }
         }
-      }
+      };
+      await Promise.all(Array.from({ length: 4 }, () => importOne()));
       setImportSummary(`Import finished: ${imported} added, ${skipped} already present or incomplete, ${failed} failed. ${firstFailure ? 'First issue: ' + firstFailure : 'Product photos copied to Cloudinary and products saved to Firebase.'}`);
     } catch (error) {
       setImportSummary(error instanceof Error ? error.message : 'Catalogue import failed.');
