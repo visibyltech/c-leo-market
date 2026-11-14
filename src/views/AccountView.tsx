@@ -27,7 +27,7 @@ import { AuthPanel } from '../components/AuthPanel';
 
 export const AccountView: React.FC = () => {
   const { accountInitialTab, navigateTo } = useNavigation();
-  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
+  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || 'tvplugng@gmail.com').trim().toLowerCase();
   const {
     orders,
     bnplApplications,
