@@ -29,7 +29,7 @@ import { uploadToCloudinary, uploadRemoteImageToCloudinary } from '../services/c
 export const AdminView: React.FC = () => {
   const { navigateTo } = useNavigation();
   const { currentUser, authLoading } = useShop();
-  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase();
+  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || 'tvplugng@gmail.com').trim().toLowerCase();
   const isAdmin = !!adminEmail && currentUser?.email?.trim().toLowerCase() === adminEmail;
   const {
     products,
