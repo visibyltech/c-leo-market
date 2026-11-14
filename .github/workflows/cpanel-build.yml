@@ -47,3 +47,5 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 7
+
+# Rebuild trigger: include latest administrator access correction.
