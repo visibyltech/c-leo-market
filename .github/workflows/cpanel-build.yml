@@ -28,8 +28,6 @@ jobs:
         run: npm run build
         env:
           VITE_ADMIN_EMAIL: tvplugng@gmail.com
-          VITE_CLOUDINARY_CLOUD_NAME: ihtjip68
-          VITE_CLOUDINARY_UPLOAD_PRESET: cleo_market_upload
       - name: Add cPanel SPA rewrite
         run: |
           cat > dist/.htaccess <<'EOF'
