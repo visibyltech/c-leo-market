@@ -4,6 +4,13 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/cpanel-build.yml'
+      - 'src/views/AdminView.tsx'
+      - 'src/views/AccountView.tsx'
+      - 'src/lib/firebase.ts'
+      - 'src/services/cloudinary.ts'
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,7 +24,12 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - run: npm run build
+      - name: Build production website
+        run: npm run build
+        env:
+          VITE_ADMIN_EMAIL: tvplugng@gmail.com
+          VITE_CLOUDINARY_CLOUD_NAME: ihtjip68
+          VITE_CLOUDINARY_UPLOAD_PRESET: cleo_market_upload
       - name: Add cPanel SPA rewrite
         run: |
           cat > dist/.htaccess <<'EOF'
