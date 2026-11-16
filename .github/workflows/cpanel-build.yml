@@ -28,14 +28,14 @@ jobs:
         run: npm run build
         env:
           VITE_ADMIN_EMAIL: tvplugng@gmail.com
-          VITE_NEOCASH_PUBLIC_KEY: pk_test_visibyl_technologies_ltd_e966e1ddfe0fd2f5
+          VITE_NEOCASH_PUBLIC_KEY: pk_test_c_leo_market_f3dbdefa071af348
       - name: Add cPanel SPA rewrite
         run: |
           cat > dist/.htaccess <<'EOF'
           Options -MultiViews
           RewriteEngine On
           RewriteBase /
-          RewriteRule ^index\.html$ - [L]
+          RewriteRule ^index\\.html$ - [L]
           RewriteCond %{REQUEST_FILENAME} !-f
           RewriteCond %{REQUEST_FILENAME} !-d
           RewriteRule . /index.html [L]
@@ -47,4 +47,4 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-# Rebuild trigger: include latest administrator access correction.
+# Rebuild trigger: update NeoCash public test key.
